@@ -1,0 +1,1 @@
+const REFRESH_TOKEN_TTL_DAYS = 30;
