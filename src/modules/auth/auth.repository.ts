@@ -82,6 +82,19 @@ class AuthRepository {
     });
   }
 
+  async deleteEmailVerificationById(id: string, tx?: Prisma.TransactionClient) {
+    return this.getClient(tx).emailVerificationToken.delete({ where: { id } });
+  }
+
+  async deleteEmailVerificationByUserId(
+    userId: string,
+    tx?: Prisma.TransactionClient,
+  ) {
+    return this.getClient(tx).emailVerificationToken.deleteMany({
+      where: { userId },
+    });
+  }
+
   // password reset
   async createPasswordResetToken(
     data: {
