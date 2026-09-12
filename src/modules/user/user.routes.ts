@@ -3,10 +3,11 @@ import { requireAuth } from "../../middlewares/requireAuth.js";
 import { validateBody } from "../../middlewares/validate.js";
 import { requireRole } from "../../middlewares/requireRole.js";
 import { requirePermission } from "../../middlewares/requirePermission.js";
+import { userHandler } from "./user.controller.js";
 
 const userRoute = Router();
 
-// userRoute.get("/me", requireAuth);
+userRoute.get("/me", requireAuth, userHandler.getMe);
 // userRoute.put("/me", requireAuth, validateBody);
 // userRoute.delete("/me", requireAuth);
 // userRoute.get("/me/sessions", requireAuth); //list refresh token
