@@ -1,14 +1,22 @@
-import { prisma } from "../../config/prisma.js";
+import { Prisma } from "../../../generated/prisma/client.js";
+import { DbClient, prisma } from "../../config/prisma.js";
 
 class AuthRepository {
-  async createRefreshToken(data: {
-    tokenHash: string;
-    userId: string;
-    userAgent?: string;
-    ipAddress?: string;
-    expiresAt: Date;
-  }) {
-    return prisma.refreshToken.create({
+  private getClient(tx?: Prisma.TransactionClient): DbClient {
+    return tx ?? prisma;
+  }
+
+  async createRefreshToken(
+    data: {
+      tokenHash: string;
+      userId: string;
+      userAgent?: string;
+      ipAddress?: string;
+      expiresAt: Date;
+    },
+    tx?: Prisma.TransactionClient,
+  ) {
+    return this.getClient(tx).refreshToken.create({
       data: {
         token: data.tokenHash,
         userId: data.userId,
@@ -19,19 +27,27 @@ class AuthRepository {
     });
   }
 
-  async findRefreshTokenByHash(tokenHash: string) {
-    return prisma.refreshToken.findUnique({ where: { token: tokenHash } });
+  async findRefreshTokenByHash(
+    tokenHash: string,
+    tx?: Prisma.TransactionClient,
+  ) {
+    return this.getClient(tx).refreshToken.findUnique({
+      where: { token: tokenHash },
+    });
   }
 
-  async revokeRefreshToken(id: string) {
-    return prisma.refreshToken.update({
+  async revokeRefreshToken(id: string, tx?: Prisma.TransactionClient) {
+    return this.getClient(tx).refreshToken.update({
       where: { id },
       data: { isRevoked: true },
     });
   }
 
-  async revokeAllRefreshtokenForUser(userId: string) {
-    return prisma.refreshToken.updateMany({
+  async revokeAllRefreshtokenForUser(
+    userId: string,
+    tx?: Prisma.TransactionClient,
+  ) {
+    return this.getClient(tx).refreshToken.updateMany({
       where: { id: userId },
       data: {
         isRevoked: true,
@@ -40,12 +56,15 @@ class AuthRepository {
   }
 
   // email verification
-  async createEmailVerificationToken(data: {
-    tokenHash: string;
-    userId: string;
-    expiresAt: Date;
-  }) {
-    return prisma.emailVerificationToken.create({
+  async createEmailVerificationToken(
+    data: {
+      tokenHash: string;
+      userId: string;
+      expiresAt: Date;
+    },
+    tx?: Prisma.TransactionClient,
+  ) {
+    return this.getClient(tx).emailVerificationToken.create({
       data: {
         token: data.tokenHash,
         userId: data.userId,
@@ -54,19 +73,25 @@ class AuthRepository {
     });
   }
 
-  async findEmailVerificationToken(tokenHash: string) {
-    return prisma.emailVerificationToken.findUnique({
+  async findEmailVerificationToken(
+    tokenHash: string,
+    tx?: Prisma.TransactionClient,
+  ) {
+    return this.getClient(tx).emailVerificationToken.findUnique({
       where: { token: tokenHash },
     });
   }
 
   // password reset
-  async createPasswordResetToken(data: {
-    tokenHash: string;
-    userId: string;
-    expiresAt: Date;
-  }) {
-    return prisma.passwordResetToken.create({
+  async createPasswordResetToken(
+    data: {
+      tokenHash: string;
+      userId: string;
+      expiresAt: Date;
+    },
+    tx?: Prisma.TransactionClient,
+  ) {
+    return this.getClient(tx).passwordResetToken.create({
       data: {
         token: data.tokenHash,
         userId: data.userId,
@@ -75,32 +100,42 @@ class AuthRepository {
     });
   }
 
-  async findPasswordResetToken(tokenHash: string) {
-    return prisma.passwordResetToken.findUnique({
+  async findPasswordResetToken(
+    tokenHash: string,
+    tx?: Prisma.TransactionClient,
+  ) {
+    return this.getClient(tx).passwordResetToken.findUnique({
       where: { token: tokenHash },
     });
   }
 
-  async markPasswordResetTokenUsed(id: string) {
-    return prisma.passwordResetToken.update({
+  async markPasswordResetTokenUsed(id: string, tx?: Prisma.TransactionClient) {
+    return this.getClient(tx).passwordResetToken.update({
       where: { id },
       data: { used: true },
     });
   }
 
   // OAuth
-  async findOAuthAccount(provider: string, providerUserId: string) {
-    return prisma.oAuthAccount.findUnique({
+  async findOAuthAccount(
+    provider: string,
+    providerUserId: string,
+    tx?: Prisma.TransactionClient,
+  ) {
+    return this.getClient(tx).oAuthAccount.findUnique({
       where: { provider_providerUserId: { provider, providerUserId } },
     });
   }
 
-  async createOAuthAccount(data: {
-    provider: string;
-    providerUserId: string;
-    userId: string;
-  }) {
-    return prisma.oAuthAccount.create({
+  async createOAuthAccount(
+    data: {
+      provider: string;
+      providerUserId: string;
+      userId: string;
+    },
+    tx?: Prisma.TransactionClient,
+  ) {
+    return this.getClient(tx).oAuthAccount.create({
       data,
     });
   }

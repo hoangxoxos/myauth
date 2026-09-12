@@ -1,35 +1,49 @@
-import { prisma } from "../../config/prisma.js";
+import { Prisma } from "../../../generated/prisma/client.js";
+import { DbClient, prisma } from "../../config/prisma.js";
 
-class UserRepository {
-  async findById(id: string) {
-    return prisma.user.findUnique({ where: { id } });
+export class UserRepository {
+  private getClient(tx?: Prisma.TransactionClient): DbClient {
+    return tx ?? prisma;
+  }
+  async findById(id: string, tx?: Prisma.TransactionClient) {
+    return this.getClient(tx).user.findUnique({ where: { id } });
   }
 
-  async findByEmail(email: string) {
-    return prisma.user.findUnique({ where: { email } });
+  async findByEmail(email: string, tx?: Prisma.TransactionClient) {
+    return this.getClient(tx).user.findUnique({ where: { email } });
   }
 
-  async create(data: { email: string; password?: string; name?: string }) {
-    return prisma.user.create({ data });
+  async create(
+    data: { email: string; password?: string; name?: string },
+    tx?: Prisma.TransactionClient,
+  ) {
+    return this.getClient(tx).user.create({ data });
   }
 
   async update(
     id: string,
     data: Partial<{ name: string; avatarUrl: string; email: string }>,
+    tx?: Prisma.TransactionClient,
   ) {
-    return prisma.user.update({ where: { id }, data });
+    return this.getClient(tx).user.update({ where: { id }, data });
   }
 
-  async delete(id: string) {
-    return prisma.user.delete({ where: { id } });
+  async delete(id: string, tx?: Prisma.TransactionClient) {
+    return this.getClient(tx).user.delete({ where: { id } });
   }
 
-  async list(params: { skip?: number; take?: number }) {
-    return prisma.user.findMany({ skip: params.skip, take: params.take });
+  async list(
+    params: { skip?: number; take?: number },
+    tx?: Prisma.TransactionClient,
+  ) {
+    return this.getClient(tx).user.findMany({
+      skip: params.skip,
+      take: params.take,
+    });
   }
 
-  async markEmailVerified(id: string) {
-    return prisma.user.update({
+  async markEmailVerified(id: string, tx?: Prisma.TransactionClient) {
+    return this.getClient(tx).user.update({
       where: { id },
       data: {
         isEmailVerified: true,
@@ -37,3 +51,5 @@ class UserRepository {
     });
   }
 }
+
+export const userRepo = new UserRepository();
