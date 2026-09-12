@@ -40,3 +40,7 @@ export function verifyTwoFactorPendingToken(token: string) {
 
   return payload;
 }
+
+export function generateRandomToken(length: number = 32) {
+  return crypto.randomBytes(length).toString("hex");
+}
