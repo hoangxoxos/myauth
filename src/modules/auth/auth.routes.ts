@@ -24,8 +24,8 @@ authRoute.get("/email/verify", authHandler.verifyEmail);
 // authRoute.post("/password/reset/:token", validateBody);
 // authRoute.put("/password/change", requireAuth, validateBody);
 
-// authRoute.post("/2fa/setup", requireAuth);
-// authRoute.post("/2fa/enable", requireAuth);
-// authRoute.post("/2fa/disable", requireAuth);
+authRoute.post("/2fa/setup", requireAuth, authHandler.setup2FA);
+authRoute.post("/2fa/enable", requireAuth, authHandler.enable2FA);
+authRoute.post("/2fa/disable", requireAuth, authHandler.disable2FA);
 
 export default authRoute;

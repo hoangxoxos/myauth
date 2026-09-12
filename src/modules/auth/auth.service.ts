@@ -161,8 +161,8 @@ class AuthService {
 
     // save token hash
     const emailVerificationExpiresAt = new Date(
-      // Date.now() + 24 * 60 * 60 * 1000,
-      Date.now() + 300000,
+      Date.now() + 24 * 60 * 60 * 1000,
+      // Date.now() + 300000,
     );
 
     const { emailVerificationToken, emailVerification } =
@@ -365,6 +365,78 @@ class AuthService {
         createdAt: refreshToken.createdAt,
         expiresAt: refreshToken.expiresAt,
       },
+    };
+  }
+
+  async setup2FA(userId: string) {
+    const user = await userRepo.findById(userId);
+
+    if (!user) {
+      throw new AppError(404, "User not found");
+    }
+
+    const twoFASecret = otp.generateSecret();
+    const issuer = "My Auth App";
+    const otpAuthUrl = otp.generateURI({
+      secret: twoFASecret,
+      issuer,
+      label: user.email,
+    });
+
+    const setup2FAResult = await authRepository.setup2FA({
+      userId: user.id,
+      secret: twoFASecret,
+    });
+
+    return {
+      setup2FAResult,
+      otpAuthUrl,
+      secret: twoFASecret,
+    };
+  }
+
+  async enable2FA(userId: string) {
+    const user = await userRepo.findById(userId);
+
+    if (!user) {
+      throw new AppError(404, "User not found");
+    }
+
+    if (!user.twoFactorSecret) {
+      throw new AppError(400, "User don't have 2FA setup yet");
+    }
+
+    if (user.twoFactorEnabled) {
+      throw new AppError(400, "User already enable 2FA");
+    }
+
+    const result = await authRepository.enable2FA({ userId: user.id });
+
+    return {
+      id: result.id,
+      email: result.email,
+      isEmailVerified: result.isEmailVerified,
+      twoFactorEnable: result.twoFactorEnabled,
+    };
+  }
+
+  async disable2FA(userId: string) {
+    const user = await userRepo.findById(userId);
+
+    if (!user) {
+      throw new AppError(404, "User not found");
+    }
+
+    if (!user.twoFactorSecret) {
+      throw new AppError(400, "User don't have 2FA setup yet");
+    }
+    const result = await authRepository.disable2FA({ userId: user.id });
+
+    return {
+      id: result.id,
+      email: result.email,
+      isEmailVerified: result.isEmailVerified,
+      twoFactorEnable: result.twoFactorEnabled,
     };
   }
 }

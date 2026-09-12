@@ -152,6 +152,37 @@ class AuthRepository {
       data,
     });
   }
+
+  async setup2FA(
+    data: { userId: string; secret: string },
+    tx?: Prisma.TransactionClient,
+  ) {
+    return this.getClient(tx).user.update({
+      where: { id: data.userId },
+      data: {
+        twoFactorSecret: data.secret,
+        twoFactorEnabled: false,
+      },
+    });
+  }
+
+  async enable2FA(data: { userId: string }, tx?: Prisma.TransactionClient) {
+    return this.getClient(tx).user.update({
+      where: { id: data.userId },
+      data: {
+        twoFactorEnabled: true,
+      },
+    });
+  }
+
+  async disable2FA(data: { userId: string }, tx?: Prisma.TransactionClient) {
+    return this.getClient(tx).user.update({
+      where: { id: data.userId },
+      data: {
+        twoFactorEnabled: false,
+      },
+    });
+  }
 }
 
 export const authRepository = new AuthRepository();

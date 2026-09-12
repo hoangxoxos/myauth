@@ -52,7 +52,7 @@ class AuthController {
         httpOnly: true,
         secure: isProd,
         sameSite: "lax",
-        maxAge: 300000,
+        maxAge: 24 * 60 * 60 * 1000,
       });
 
       res.status(200).json({
@@ -97,6 +97,77 @@ class AuthController {
 
       res.status(200).json({
         message: "Your email is now verified",
+        result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async setup2FA(req: Request, res: Response, next: NextFunction) {
+    const authUser = req.user;
+
+    if (!authUser) {
+      return res.status(401).json({
+        message: "Not an authenticated user",
+      });
+    }
+
+    try {
+      const result = await authService.setup2FA(authUser.sub);
+
+      res.status(200).json({
+        message: "2FA Setup is done",
+        otpAuthUrl: result.otpAuthUrl,
+        user: {
+          id: result.setup2FAResult.id,
+          email: result.setup2FAResult.email,
+          twoFactorEnabled: result.setup2FAResult.twoFactorEnabled,
+          twoFactorSecret: result.setup2FAResult.twoFactorSecret,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async enable2FA(req: Request, res: Response, next: NextFunction) {
+    const authUser = req.user;
+
+    if (!authUser) {
+      return res.status(401).json({
+        message: "Not an authenticated user",
+      });
+    }
+
+    try {
+      const result = await authService.enable2FA(authUser.sub);
+
+      res.status(200).json({
+        success: true,
+        message: "User two factor enabled",
+        result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async disable2FA(req: Request, res: Response, next: NextFunction) {
+    const authUser = req.user;
+
+    if (!authUser) {
+      return res.status(401).json({
+        message: "Not an authenticated user",
+      });
+    }
+
+    try {
+      const result = await authService.disable2FA(authUser.sub);
+
+      res.status(200).json({
+        success: true,
+        message: "User two factor disabled",
         result,
       });
     } catch (error) {
