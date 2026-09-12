@@ -323,7 +323,7 @@ class AuthService {
     const userPermissions = undefined;
 
     // Access and refresh token
-    const accessToken = await signAccessToken({
+    const accessToken = signAccessToken({
       sub: user.id,
       email: user.email,
       roles: userRolesName,
@@ -395,7 +395,7 @@ class AuthService {
     };
   }
 
-  async enable2FA(userId: string) {
+  async enable2FA(userId: string, code: string) {
     const user = await userRepo.findById(userId);
 
     if (!user) {
@@ -410,17 +410,29 @@ class AuthService {
       throw new AppError(400, "User already enable 2FA");
     }
 
-    const result = await authRepository.enable2FA({ userId: user.id });
+    // Prove the user's authenticator app actually works with this secret
+    // before turning 2FA on. Without this check, a typo'd secret locks
+    // the user out on next login.
+    const result = await otp.verify({
+      secret: user.twoFactorSecret,
+      token: code,
+    });
+
+    if (!result.valid) {
+      throw new AppError(400, "Invalid 2FA code");
+    }
+
+    const updated = await authRepository.enable2FA({ userId: user.id });
 
     return {
-      id: result.id,
-      email: result.email,
-      isEmailVerified: result.isEmailVerified,
-      twoFactorEnable: result.twoFactorEnabled,
+      id: updated.id,
+      email: updated.email,
+      isEmailVerified: updated.isEmailVerified,
+      twoFactorEnable: updated.twoFactorEnabled,
     };
   }
 
-  async disable2FA(userId: string) {
+  async disable2FA(userId: string, password: string, code: string) {
     const user = await userRepo.findById(userId);
 
     if (!user) {
@@ -430,13 +442,115 @@ class AuthService {
     if (!user.twoFactorSecret) {
       throw new AppError(400, "User don't have 2FA setup yet");
     }
-    const result = await authRepository.disable2FA({ userId: user.id });
+
+    // Re-auth: require current password. Without this, a stolen access
+    // token alone is enough to strip away the user's second security layer.
+    if (!user.password) {
+      throw new AppError(
+        400,
+        "This account uses social login and has no password set",
+      );
+    }
+
+    const okPassword = await checkPassword(password, user.password);
+    if (!okPassword) {
+      throw new AppError(400, "Invalid password");
+    }
+
+    // Also require a valid current 2FA code, not just the password.
+    // This confirms the person disabling 2FA still holds the authenticator
+    // device, not just a copy-pasted/leaked password.
+    const result = await otp.verify({
+      secret: user.twoFactorSecret,
+      token: code,
+    });
+
+    if (!result.valid) {
+      throw new AppError(400, "Invalid 2FA code");
+    }
+
+    const updated = await authRepository.disable2FA({ userId: user.id });
 
     return {
-      id: result.id,
-      email: result.email,
-      isEmailVerified: result.isEmailVerified,
-      twoFactorEnable: result.twoFactorEnabled,
+      id: updated.id,
+      email: updated.email,
+      isEmailVerified: updated.isEmailVerified,
+      twoFactorEnable: updated.twoFactorEnabled,
+    };
+  }
+
+  async refresh(token: string, userAgent?: string, ipAddress?: string) {
+    const tokenHash = hashToken(token);
+    const refreshToken = await authRepository.findRefreshTokenByHash(tokenHash);
+
+    if (!refreshToken) {
+      throw new AppError(401, "Invalid refresh token");
+    }
+
+    // catch reuse already-rotated token
+    if (refreshToken.isRevoked) {
+      // old token used -> possible theft, revoke all sessions for this user
+      await authRepository.revokeAllRefreshtokenForUser(refreshToken.userId);
+      throw new AppError(401, "Invalid refresh token");
+    }
+
+    if (refreshToken.expiresAt < new Date()) {
+      throw new AppError(401, "Refresh token has expired");
+    }
+
+    const user = await userRepo.findById(refreshToken.userId);
+    if (!user) {
+      throw new AppError(401, "User not found");
+    }
+
+    const userRoles = await roleRepo.findUserRole(user.id);
+    const userRolesName = userRoles.map((r) => {
+      return r.role.name;
+    });
+    const userPermissions = undefined;
+
+    const accessToken = await signAccessToken({
+      sub: user.id,
+      email: user.email,
+      roles: userRolesName,
+      permissions: userPermissions,
+    });
+
+    const newRawRefreshToken = generateRandomToken();
+    const newHashedRefreshToken = hashToken(newRawRefreshToken);
+    const newRefreshTokenExpiresAt = new Date(
+      Date.now() + 7 * 24 * 60 * 60 * 1000,
+    );
+    const newRefreshToken = await prisma.$transaction(async (trx) => {
+      // revoked old token
+      await authRepository.revokeRefreshToken(refreshToken.id);
+      return authRepository.createRefreshToken(
+        {
+          tokenHash: newHashedRefreshToken,
+          userId: user.id,
+          userAgent,
+          ipAddress,
+          expiresAt: newRefreshTokenExpiresAt,
+        },
+        trx,
+      );
+    });
+
+    return {
+      accessToken,
+      refreshToken: {
+        token: newRawRefreshToken,
+        expiresAt: newRefreshToken.expiresAt,
+        userAgent: newRefreshToken.userAgent,
+        ipAddress: newRefreshToken.ipAddress,
+      },
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        isEmailVerified: user.isEmailVerified,
+        twoFactorEnable: user.twoFactorEnabled,
+      },
     };
   }
 }

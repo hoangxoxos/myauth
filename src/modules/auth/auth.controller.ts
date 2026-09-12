@@ -1,6 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import { ValidatedRequest } from "../../common/types/request.js";
-import { LoginInput, RegisterInput } from "./auth.schema.js";
+import {
+  Disable2FAInput,
+  Enable2FAInput,
+  LoginInput,
+  RegisterInput,
+} from "./auth.schema.js";
 import { userRepo } from "../user/user.repository.js";
 import { authService } from "./auth.service.js";
 import { env } from "../../config/env.js";
@@ -131,8 +136,13 @@ class AuthController {
     }
   }
 
-  async enable2FA(req: Request, res: Response, next: NextFunction) {
+  async enable2FA(
+    req: ValidatedRequest<Enable2FAInput>,
+    res: Response,
+    next: NextFunction,
+  ) {
     const authUser = req.user;
+    const { code } = req.body;
 
     if (!authUser) {
       return res.status(401).json({
@@ -140,8 +150,14 @@ class AuthController {
       });
     }
 
+    if (!code) {
+      return res.status(400).json({
+        message: "Two factor code is missing",
+      });
+    }
+
     try {
-      const result = await authService.enable2FA(authUser.sub);
+      const result = await authService.enable2FA(authUser.sub, code);
 
       res.status(200).json({
         success: true,
@@ -153,8 +169,13 @@ class AuthController {
     }
   }
 
-  async disable2FA(req: Request, res: Response, next: NextFunction) {
+  async disable2FA(
+    req: ValidatedRequest<Disable2FAInput>,
+    res: Response,
+    next: NextFunction,
+  ) {
     const authUser = req.user;
+    const { password, code } = req.body;
 
     if (!authUser) {
       return res.status(401).json({
@@ -163,11 +184,46 @@ class AuthController {
     }
 
     try {
-      const result = await authService.disable2FA(authUser.sub);
+      const result = await authService.disable2FA(authUser.sub, password, code);
 
       res.status(200).json({
         success: true,
         message: "User two factor disabled",
+        result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async refresh(req: Request, res: Response, next: NextFunction) {
+    try {
+      const token = req.cookies.refreshToken as string | undefined;
+      const userAgent = req.headers["user-agent"] || "Unknown";
+      let ip = req.ip;
+
+      if (ip === "::1") ip = "127.0.0.1";
+      if (ip?.startsWith("::ffff:")) ip = ip.replace("::ffff:", "");
+
+      if (!token) {
+        return res.status(401).json({
+          message: "Refresh token is missing",
+        });
+      }
+
+      const result = await authService.refresh(token, userAgent, ip);
+      const isProd = env.NODE_ENV === "production";
+
+      res.cookie("refreshToken", result.refreshToken.token, {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      res.status(200).json({
+        success: true,
+        message: "Token refreshed",
         result,
       });
     } catch (error) {

@@ -13,7 +13,7 @@ authRoute.post("/login", validateBody(loginSchema), authHandler.login);
 authRoute.post("/email/send-verification", authHandler.sendVerifyEmail);
 authRoute.get("/email/verify", authHandler.verifyEmail);
 
-// authRoute.post("/refresh");
+authRoute.post("/refresh", authHandler.refresh);
 // authRoute.post("/logout");
 // authRoute.post("/logout-all");
 
