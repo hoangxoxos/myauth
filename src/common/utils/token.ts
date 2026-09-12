@@ -23,23 +23,23 @@ export function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
-export function signTwoFactorPendingToken(userId: string) {
-  return jwt.sign(
-    { sub: userId, purpose: "2fa_pending" },
-    env.JWT_ACCESS_SECRET,
-    { expiresIn: "5m" },
-  );
-}
+// export function signTwoFactorPendingToken(userId: string) {
+//   return jwt.sign(
+//     { sub: userId, purpose: "2fa_pending" },
+//     env.JWT_ACCESS_SECRET,
+//     { expiresIn: "5m" },
+//   );
+// }
 
-export function verifyTwoFactorPendingToken(token: string) {
-  const payload = jwt.verify(token, env.JWT_ACCESS_SECRET);
+// export function verifyTwoFactorPendingToken(token: string) {
+//   const payload = jwt.verify(token, env.JWT_ACCESS_SECRET);
 
-  if (typeof payload === "string" || payload.purpose !== "2fa_pending") {
-    throw new Error("Invalid 2FA pending token");
-  }
+//   if (typeof payload === "string" || payload.purpose !== "2fa_pending") {
+//     throw new Error("Invalid 2FA pending token");
+//   }
 
-  return payload;
-}
+//   return payload;
+// }
 
 export function generateRandomToken(length: number = 32) {
   return crypto.randomBytes(length).toString("hex");
