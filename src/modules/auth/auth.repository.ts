@@ -48,7 +48,7 @@ class AuthRepository {
     tx?: Prisma.TransactionClient,
   ) {
     return this.getClient(tx).refreshToken.updateMany({
-      where: { id: userId },
+      where: { userId },
       data: {
         isRevoked: true,
       },

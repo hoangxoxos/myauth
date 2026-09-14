@@ -523,7 +523,7 @@ class AuthService {
     );
     const newRefreshToken = await prisma.$transaction(async (trx) => {
       // revoked old token
-      await authRepository.revokeRefreshToken(refreshToken.id);
+      await authRepository.revokeRefreshToken(refreshToken.id, trx);
       return authRepository.createRefreshToken(
         {
           tokenHash: newHashedRefreshToken,
@@ -552,6 +552,34 @@ class AuthService {
         twoFactorEnable: user.twoFactorEnabled,
       },
     };
+  }
+
+  async logout(token: string) {
+    const tokenHash = hashToken(token);
+    const refreshToken = await authRepository.findRefreshTokenByHash(tokenHash);
+
+    if (!refreshToken) {
+      throw new AppError(401, "Invalid refresh token");
+    }
+
+    if (refreshToken.expiresAt < new Date()) {
+      await authRepository.revokeRefreshToken(refreshToken.id);
+      throw new AppError(401, "Refresh token has expired");
+    }
+
+    if (refreshToken.isRevoked) {
+      await authRepository.revokeAllRefreshtokenForUser(refreshToken.userId);
+      throw new AppError(
+        401,
+        "Detected reuse revoked refresh token. Logout in all device",
+      );
+    }
+
+    return authRepository.revokeRefreshToken(refreshToken.id);
+  }
+
+  async logoutAll(userId: string) {
+    return await authRepository.revokeAllRefreshtokenForUser(userId);
   }
 }
 

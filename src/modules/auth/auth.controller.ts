@@ -230,6 +230,78 @@ class AuthController {
       next(error);
     }
   }
+
+  async logout(req: Request, res: Response, next: NextFunction) {
+    const authUser = req.user;
+    if (!authUser) {
+      return res.status(401).json({
+        message: "Not an authenticated user",
+      });
+    }
+
+    const refreshToken = req.cookies.refreshToken as string | undefined;
+    if (!refreshToken) {
+      return res.status(401).json({
+        message: "Refresh token is missing",
+      });
+    }
+
+    try {
+      const result = await authService.logout(refreshToken);
+
+      const isProd = env.NODE_ENV === "production";
+      res.clearCookie("refreshToken", {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: "strict",
+      });
+
+      res.status(200).json({
+        success: true,
+        message: "Logged out",
+        user: {
+          id: result.userId,
+          userAgent: result.userAgent,
+          ipAddress: result.ipAddress,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async logoutAll(req: Request, res: Response, next: NextFunction) {
+    const authUser = req.user;
+    if (!authUser) {
+      return res.status(401).json({
+        message: "Not an authenticated user",
+      });
+    }
+
+    const refreshToken = req.cookies.refreshToken as string | undefined;
+    if (!refreshToken) {
+      return res.status(401).json({
+        message: "Refresh token is missing",
+      });
+    }
+
+    try {
+      const result = await authService.logoutAll(authUser.sub);
+
+      const isProd = env.NODE_ENV === "production";
+      res.clearCookie("refreshToken", {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: "strict",
+      });
+
+      res.status(200).json({
+        message: "Logged out in all device",
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const authHandler = new AuthController();

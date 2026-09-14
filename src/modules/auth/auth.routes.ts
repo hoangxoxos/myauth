@@ -8,14 +8,13 @@ const authRoute = Router();
 
 authRoute.post("/register", validateBody(registerSchema), authHandler.register);
 authRoute.post("/login", validateBody(loginSchema), authHandler.login);
-// authRoute.post("/login/2fa", validateBody);
 
 authRoute.post("/email/send-verification", authHandler.sendVerifyEmail);
 authRoute.get("/email/verify", authHandler.verifyEmail);
 
 authRoute.post("/refresh", authHandler.refresh);
-// authRoute.post("/logout");
-// authRoute.post("/logout-all");
+authRoute.post("/logout", requireAuth, authHandler.logout);
+authRoute.post("/logout-all", requireAuth, authHandler.logoutAll);
 
 // authRoute.get("/google");
 // authRoute.get("/google/callback");
