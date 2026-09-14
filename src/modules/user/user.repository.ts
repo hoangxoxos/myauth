@@ -14,7 +14,13 @@ export class UserRepository {
   }
 
   async create(
-    data: { email: string; password?: string; name?: string },
+    data: {
+      email: string;
+      password?: string;
+      name?: string;
+      avatarUrl?: string;
+      isEmailVerified?: boolean;
+    },
     tx?: Prisma.TransactionClient,
   ) {
     return this.getClient(tx).user.create({ data });

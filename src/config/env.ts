@@ -18,6 +18,10 @@ const envSchema = z.object({
   SMTP_USER: z.string(),
   SMTP_PASS: z.string(),
   EMAIL_FROM: z.string().default("xoxosos <no-reply@xoxosos.com>"),
+  GOOGLE_CLIENT_ID: z.string(),
+  GOOGLE_CLIENT_SECRET: z.string(),
+  GOOGLE_REDIRECT_URI: z.string(),
+  FRONTEND_URL: z.string().url().default("http://localhost:3000"),
 });
 
 const parsed = envSchema.safeParse(process.env);

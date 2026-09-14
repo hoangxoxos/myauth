@@ -12,6 +12,12 @@ import {
 import { userRepo } from "../user/user.repository.js";
 import { authService } from "./auth.service.js";
 import { env } from "../../config/env.js";
+import {
+  generateOAuthState,
+  getGoogleClient,
+  oauthCookieConfig,
+} from "../../common/utils/oauth-google.js";
+import { AppError } from "../../common/errors/AppError.js";
 
 class AuthController {
   async register(
@@ -368,6 +374,100 @@ class AuthController {
           twoFactorEnabled: result.updatedUser.twoFactorEnabled,
         },
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async googleRedirect(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const state = generateOAuthState();
+
+      const isProd = env.NODE_ENV === "production";
+      res.cookie(oauthCookieConfig.stateCookieName, state, {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: "lax",
+        maxAge: oauthCookieConfig.stateMaxAgeMs,
+      });
+
+      const client = getGoogleClient();
+      const url = client.generateAuthUrl({
+        access_type: "offline",
+        scope: ["openid", "email", "profile"],
+        state,
+        prompt: "consent",
+      });
+
+      res.redirect(url);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Google redirects back here with ?code=...&state=...
+   */
+
+  async googleCallback(req: Request, res: Response, next: NextFunction) {
+    try {
+      const client = getGoogleClient();
+      const { code, state } = req.query as { code?: string; state?: string };
+      const savedState = req.cookies?.[oauthCookieConfig.stateCookieName];
+
+      res.clearCookie(oauthCookieConfig.stateCookieName);
+
+      if (!code || !state || !savedState || state !== savedState) {
+        throw new AppError(400, "Invalid OAuth state or missing code");
+      }
+
+      // exchange the code for tokens (access_token, id_token, refresh_token)
+      const { tokens } = await client.getToken(code);
+
+      if (!tokens.id_token) {
+        throw new AppError(400, "Google did not return an id_token");
+      }
+
+      // Verifies id_token signature, issuer, audience, and expiry — all in one call
+      const ticket = await client.verifyIdToken({
+        idToken: tokens.id_token,
+        audience: env.GOOGLE_CLIENT_ID,
+      });
+
+      const payload = ticket.getPayload();
+      if (!payload || !payload.sub || !payload.email) {
+        throw new AppError(400, "Invalid Google token payload");
+      }
+
+      const googleUser = {
+        id: payload.sub,
+        email: payload.email,
+        verified_email: payload.email_verified ?? false,
+        name: payload.name,
+        picture: payload.picture,
+      };
+
+      const result = await authService.loginWithGoogle(
+        googleUser,
+        req.headers["user-agent"],
+        req.ip,
+      );
+
+      const isProd = env.NODE_ENV === "production";
+      res.cookie("refreshToken", result.refreshToken.rawToken, {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: "strict",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      // Send the user back to the frontend, logged in.
+      // Access token goes in the URL here only as one option — you may prefer
+      // a short-lived one-time code exchanged by the frontend instead, to
+      // avoid access tokens showing up in browser history/server logs.
+      const redirectUrl = new URL("/oauth/success", env.FRONTEND_URL);
+      redirectUrl.searchParams.set("accessToken", result.accessToken);
+      res.redirect(redirectUrl.toString());
     } catch (error) {
       next(error);
     }

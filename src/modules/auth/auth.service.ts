@@ -2,6 +2,7 @@ import { AppError } from "../../common/errors/AppError.js";
 import { getServerUrl } from "../../common/utils/app-url.js";
 import { sendEmail } from "../../common/utils/email.js";
 import { checkPassword, hashPassword } from "../../common/utils/hash.js";
+import { getGoogleClient } from "../../common/utils/oauth-google.js";
 import {
   generateRandomToken,
   generateRefreshToken,
@@ -13,7 +14,8 @@ import { prisma } from "../../config/prisma.js";
 import { roleRepo } from "../role/role.repository.js";
 import { userRepo } from "../user/user.repository.js";
 import { authRepository } from "./auth.repository.js";
-import { OTP } from "otplib";
+import { generate, OTP } from "otplib";
+import { GoogleUserInfo } from "./auth.types.js";
 
 const otp = new OTP();
 
@@ -736,6 +738,168 @@ class AuthService {
     });
 
     return transactionResult;
+  }
+
+  async getGoogleClientUrl() {
+    const client = getGoogleClient();
+    const url = client.generateAuthUrl({
+      access_type: "offline",
+      prompt: "consent",
+      scope: ["openid", "email", "profile"],
+    });
+
+    return url;
+  }
+
+  async googleCallback(code: string) {
+    const client = getGoogleClient();
+
+    const { tokens } = await client.getToken(code);
+
+    if (!tokens.id_token) {
+      throw new AppError(400, "No google id_token is present");
+    }
+
+    const ticket = await client.verifyIdToken({
+      idToken: tokens.id_token,
+      audience: env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const email = payload?.email;
+    const emailVerified = payload?.email_verified;
+
+    if (!email || !emailVerified) {
+      throw new AppError(400, "Google email account is not verified");
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await userRepo.findByEmail(normalizedEmail);
+
+    if (!user) {
+      // register for the first time
+    }
+  }
+
+  /**
+   * Handles login/signup via Google.
+   * Three cases:
+   *  1. OAuthAccount already linked -> log that user in
+   *  2. No link, but a User with this email exists -> link Google to it
+   *  3. Neither exists -> create a new User + OAuthAccount
+   */
+  async loginWithGoogle(
+    googleUser: GoogleUserInfo,
+    userAgent?: string,
+    ipAddress?: string,
+  ) {
+    if (!googleUser.verified_email) {
+      throw new AppError(400, "Google account email is not verified");
+    }
+
+    const normalizedEmail = googleUser.email.toLowerCase().trim();
+    const user = await prisma.$transaction(async (trx) => {
+      // case 1: google account was already linked before
+      const existingLink = await authRepository.findOAuthAccount(
+        "google",
+        googleUser.id,
+        trx,
+      );
+
+      if (existingLink) {
+        const linkedUser = await userRepo.findById(existingLink.userId, trx);
+        if (!linkedUser) {
+          throw new AppError(500, "Linked user no longer exists");
+        }
+
+        return linkedUser;
+      }
+
+      // case 2: no link yet - check if a user already exist with this email
+      const existingUser = await userRepo.findByEmail(normalizedEmail, trx);
+
+      if (existingUser) {
+        await authRepository.createOAuthAccount(
+          {
+            provider: "google",
+            providerUserId: googleUser.id,
+            userId: existingUser.id,
+          },
+          trx,
+        );
+
+        return existingUser;
+      }
+
+      // case 3: brand new user, no password (OAuth only account)
+      const newUser = await userRepo.create(
+        {
+          email: normalizedEmail,
+          name: googleUser.name,
+          avatarUrl: googleUser.picture,
+          isEmailVerified: true,
+        },
+        trx,
+      );
+
+      const defaultRole = await roleRepo.findRoleByName("USER", trx);
+      if (!defaultRole) {
+        throw new AppError(500, "Default role 'USER' is not configured");
+      }
+
+      await roleRepo.createUserRole(newUser.id, defaultRole.id, trx);
+
+      await authRepository.createOAuthAccount(
+        {
+          provider: "google",
+          providerUserId: googleUser.id,
+          userId: newUser.id,
+        },
+        trx,
+      );
+
+      return newUser;
+    });
+
+    // identical normal login - issue token
+    const userRoles = await roleRepo.findUserRole(user.id);
+    const userRolesName = userRoles.map((r) => r.role.name);
+
+    const accessToken = await signAccessToken({
+      sub: user.id,
+      email: user.email,
+      roles: userRolesName,
+      permissions: undefined,
+    });
+
+    const rawRefreshToken = generateRandomToken();
+    const hashedRefreshToken = hashToken(rawRefreshToken);
+    const refreshTokenExpiresAt = new Date(
+      Date.now() + 7 * 24 * 60 * 60 * 1000,
+    );
+
+    const refreshToken = await authRepository.createRefreshToken({
+      tokenHash: hashedRefreshToken,
+      userId: user.id,
+      userAgent,
+      ipAddress,
+      expiresAt: refreshTokenExpiresAt,
+    });
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatarUrl: user.avatarUrl,
+        isEmailVerified: user.isEmailVerified,
+      },
+      accessToken,
+      refreshToken: {
+        rawToken: rawRefreshToken,
+        expiresAt: refreshToken.expiresAt,
+      },
+    };
   }
 }
 

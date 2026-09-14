@@ -22,8 +22,8 @@ authRoute.post("/refresh", authHandler.refresh);
 authRoute.post("/logout", requireAuth, authHandler.logout);
 authRoute.post("/logout-all", requireAuth, authHandler.logoutAll);
 
-// authRoute.get("/google");
-// authRoute.get("/google/callback");
+authRoute.get("/google", authHandler.googleRedirect);
+authRoute.get("/google/callback", authHandler.googleCallback);
 
 authRoute.post(
   "/password/forgot",
