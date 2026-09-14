@@ -7,6 +7,18 @@ import router from "./index.routes.js";
 
 const app = express();
 
+app.use((req, res, next) => {
+  const startedAt = performance.now();
+
+  res.on("finish", () => {
+    console.log(
+      `${req.method} ${req.originalUrl} - ${(performance.now() - startedAt).toFixed(0)}ms`,
+    );
+  });
+
+  next();
+});
+
 app.set("trust-proxy", true);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

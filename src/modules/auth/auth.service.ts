@@ -487,15 +487,15 @@ class AuthService {
       throw new AppError(401, "Invalid refresh token");
     }
 
+    if (refreshToken.expiresAt < new Date()) {
+      throw new AppError(401, "Refresh token has expired");
+    }
+
     // catch reuse already-rotated token
     if (refreshToken.isRevoked) {
       // old token used -> possible theft, revoke all sessions for this user
-      await authRepository.revokeAllRefreshtokenForUser(refreshToken.userId);
+      await authRepository.revokeAllRefreshTokenForUser(refreshToken.userId);
       throw new AppError(401, "Invalid refresh token");
-    }
-
-    if (refreshToken.expiresAt < new Date()) {
-      throw new AppError(401, "Refresh token has expired");
     }
 
     const user = await userRepo.findById(refreshToken.userId);
@@ -549,7 +549,7 @@ class AuthService {
         email: user.email,
         name: user.name,
         isEmailVerified: user.isEmailVerified,
-        twoFactorEnable: user.twoFactorEnabled,
+        twoFactorEnabled: user.twoFactorEnabled,
       },
     };
   }
@@ -562,24 +562,25 @@ class AuthService {
       throw new AppError(401, "Invalid refresh token");
     }
 
-    if (refreshToken.expiresAt < new Date()) {
-      await authRepository.revokeRefreshToken(refreshToken.id);
-      throw new AppError(401, "Refresh token has expired");
-    }
-
     if (refreshToken.isRevoked) {
-      await authRepository.revokeAllRefreshtokenForUser(refreshToken.userId);
-      throw new AppError(
-        401,
-        "Detected reuse revoked refresh token. Logout in all device",
-      );
+      return { success: true };
     }
 
-    return authRepository.revokeRefreshToken(refreshToken.id);
+    if (refreshToken.expiresAt < new Date()) {
+      return { success: true };
+    }
+
+    await authRepository.revokeRefreshToken(refreshToken.id);
+    return { success: true };
   }
 
   async logoutAll(userId: string) {
-    return await authRepository.revokeAllRefreshtokenForUser(userId);
+    const user = await userRepo.findById(userId);
+    if (!user) {
+      throw new AppError(404, "User not found");
+    }
+
+    return await authRepository.revokeAllRefreshTokenForUser(userId);
   }
 }
 

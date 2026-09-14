@@ -43,7 +43,7 @@ class AuthRepository {
     });
   }
 
-  async revokeAllRefreshtokenForUser(
+  async revokeAllRefreshTokenForUser(
     userId: string,
     tx?: Prisma.TransactionClient,
   ) {
