@@ -1,10 +1,13 @@
 import { Request, Response, NextFunction } from "express";
 import { ValidatedRequest } from "../../common/types/request.js";
 import {
+  ChangePasswordInput,
   Disable2FAInput,
   Enable2FAInput,
+  ForgotPasswordInput,
   LoginInput,
   RegisterInput,
+  ResetPasswordInput,
 } from "./auth.schema.js";
 import { userRepo } from "../user/user.repository.js";
 import { authService } from "./auth.service.js";
@@ -259,11 +262,6 @@ class AuthController {
       res.status(200).json({
         success: true,
         message: "Logged out",
-        user: {
-          id: result.userId,
-          userAgent: result.userAgent,
-          ipAddress: result.ipAddress,
-        },
       });
     } catch (error) {
       next(error);
@@ -297,6 +295,78 @@ class AuthController {
 
       res.status(200).json({
         message: "Logged out in all device",
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async forgotPassword(
+    req: ValidatedRequest<ForgotPasswordInput>,
+    res: Response,
+    next: NextFunction,
+  ) {
+    const { email } = req.body;
+
+    try {
+      const result = await authService.forgotPassword(email);
+
+      res.status(200).json({
+        result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async resetPassword(
+    req: ValidatedRequest<ResetPasswordInput>,
+    res: Response,
+    next: NextFunction,
+  ) {
+    const { token, newPassword } = req.body;
+
+    try {
+      const result = await authService.resetPassword(token, newPassword);
+
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async changePassword(
+    req: ValidatedRequest<ChangePasswordInput>,
+    res: Response,
+    next: NextFunction,
+  ) {
+    const authUser = req.user;
+    if (!authUser) {
+      return res.status(401).json({
+        message: "Not an authenticated user",
+      });
+    }
+
+    const { currentPassword, newPassword, twoFactorCode } = req.body;
+
+    try {
+      const result = await authService.changePassword(
+        authUser.sub,
+        currentPassword,
+        newPassword,
+        twoFactorCode,
+      );
+
+      res.status(200).json({
+        success: true,
+        message:
+          "Changed password successfully. Please login again to continue",
+        user: {
+          id: result.updatedUser.id,
+          email: result.updatedUser.email,
+          name: result.updatedUser.name,
+          twoFactorEnabled: result.updatedUser.twoFactorEnabled,
+        },
       });
     } catch (error) {
       next(error);

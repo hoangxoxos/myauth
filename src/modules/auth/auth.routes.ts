@@ -1,7 +1,13 @@
 import { Router } from "express";
 import { requireAuth } from "../../middlewares/requireAuth.js";
 import { validateBody } from "../../middlewares/validate.js";
-import { loginSchema, registerSchema } from "./auth.schema.js";
+import {
+  changePasswordSchema,
+  forgotPasswordSchema,
+  loginSchema,
+  registerSchema,
+  resetPasswordSchema,
+} from "./auth.schema.js";
 import { authHandler } from "./auth.controller.js";
 
 const authRoute = Router();
@@ -19,9 +25,22 @@ authRoute.post("/logout-all", requireAuth, authHandler.logoutAll);
 // authRoute.get("/google");
 // authRoute.get("/google/callback");
 
-// authRoute.post("/password/forgot", validateBody);
-// authRoute.post("/password/reset/:token", validateBody);
-// authRoute.put("/password/change", requireAuth, validateBody);
+authRoute.post(
+  "/password/forgot",
+  validateBody(forgotPasswordSchema),
+  authHandler.forgotPassword,
+);
+authRoute.post(
+  "/password/reset",
+  validateBody(resetPasswordSchema),
+  authHandler.resetPassword,
+);
+authRoute.put(
+  "/password/change",
+  requireAuth,
+  validateBody(changePasswordSchema),
+  authHandler.changePassword,
+);
 
 authRoute.post("/2fa/setup", requireAuth, authHandler.setup2FA);
 authRoute.post("/2fa/enable", requireAuth, authHandler.enable2FA);

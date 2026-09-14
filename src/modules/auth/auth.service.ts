@@ -443,6 +443,10 @@ class AuthService {
       throw new AppError(400, "User don't have 2FA setup yet");
     }
 
+    if (!user.twoFactorEnabled) {
+      throw new AppError(400, "User 2FA have not enabled yet");
+    }
+
     // Re-auth: require current password. Without this, a stolen access
     // token alone is enough to strip away the user's second security layer.
     if (!user.password) {
@@ -581,6 +585,157 @@ class AuthService {
     }
 
     return await authRepository.revokeAllRefreshTokenForUser(userId);
+  }
+
+  async forgotPassword(email: string) {
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await userRepo.findByEmail(normalizedEmail);
+
+    const genericMessage =
+      "If an account with this email exists, we will send you a reset link";
+
+    if (!user) {
+      return { message: genericMessage };
+    }
+
+    // todo: let oauth user choose to create password or throw AppError
+
+    const rawToken = generateRandomToken();
+    const tokenHash = hashToken(rawToken);
+    const passwordResetExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await authRepository.createPasswordResetToken({
+      tokenHash,
+      userId: user.id,
+      expiresAt: passwordResetExpiresAt,
+    });
+
+    const encodedToken = encodeURIComponent(rawToken);
+    const resetUrl = `${getServerUrl()}/auth/password/reset?token=${encodedToken}`;
+
+    await sendEmail(
+      user.email,
+      "Reset your password",
+      `
+      <h2>Reset your password</h2>
+
+      <p>Hello ${user.name ?? "there"},</p>
+
+      <p>This is your reset password link.</p>
+
+      <p>${resetUrl}</p>
+      
+        <p>
+          This link expires in 24 hours.
+        </p>
+      `,
+    );
+
+    return {
+      message: genericMessage,
+    };
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    const tokenHash = hashToken(token);
+
+    const passwordReset =
+      await authRepository.findPasswordResetToken(tokenHash);
+
+    if (!passwordReset) {
+      throw new AppError(400, "Invalid or expired reset password token");
+    }
+
+    if (passwordReset.used || passwordReset.expiresAt < new Date()) {
+      throw new AppError(400, "Invalid or expired reset password token");
+    }
+
+    const user = await userRepo.findById(passwordReset.userId);
+    if (!user) {
+      throw new AppError(400, "Invalid or expired reset password token");
+    }
+
+    const newPasswordHash = await hashPassword(newPassword);
+
+    const result = await prisma.$transaction(async (trx) => {
+      await userRepo.update(user.id, { password: newPasswordHash }, trx);
+
+      await authRepository.markPasswordResetTokenUsed(passwordReset.id, trx);
+
+      await authRepository.revokeAllRefreshTokenForUser(user.id, trx);
+
+      return {
+        message: "Password reset successfully. Please login to continue",
+      };
+    });
+
+    return {
+      result,
+    };
+  }
+
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+    twoFactorCode?: string,
+  ) {
+    const user = await userRepo.findById(userId);
+    if (!user) {
+      throw new AppError(404, "User not found");
+    }
+
+    if (!user.password) {
+      throw new AppError(
+        400,
+        "This account uses social login and has no password set",
+      );
+    }
+
+    const isValidPassword = await checkPassword(currentPassword, user.password);
+
+    if (!isValidPassword) {
+      throw new AppError(400, "Invalid password");
+    }
+
+    // 2fa check
+    if (user.twoFactorEnabled) {
+      if (!twoFactorCode) {
+        throw new AppError(400, "Two factor code is missing");
+      }
+
+      if (!user.twoFactorSecret) {
+        throw new AppError(400, "Two factor misconfigured for this account");
+      }
+
+      const result = await otp.verify({
+        secret: user.twoFactorSecret,
+        token: twoFactorCode,
+      });
+
+      if (!result.valid) {
+        throw new AppError(400, "Invalid 2FA code");
+      }
+    }
+
+    const newPasswordHash = await hashPassword(newPassword);
+    const transactionResult = await prisma.$transaction(async (trx) => {
+      const updatedUser = await userRepo.update(
+        user.id,
+        { password: newPasswordHash },
+        trx,
+      );
+
+      const revokeRefreshTokenResult =
+        await authRepository.revokeAllRefreshTokenForUser(user.id, trx);
+
+      return {
+        updatedUser,
+        revokeRefreshTokenResult,
+      };
+    });
+
+    return transactionResult;
   }
 }
 

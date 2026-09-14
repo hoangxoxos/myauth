@@ -22,7 +22,12 @@ export class UserRepository {
 
   async update(
     id: string,
-    data: Partial<{ name: string; avatarUrl: string; email: string }>,
+    data: Partial<{
+      name: string;
+      avatarUrl: string;
+      email: string;
+      password: string;
+    }>,
     tx?: Prisma.TransactionClient,
   ) {
     return this.getClient(tx).user.update({ where: { id }, data });
