@@ -1,5 +1,6 @@
 import { Prisma } from "../../../generated/prisma/client.js";
 import { DbClient, prisma } from "../../config/prisma.js";
+import { roleRepo } from "../role/role.repository.js";
 
 class AuthRepository {
   private getClient(tx?: Prisma.TransactionClient): DbClient {
@@ -224,6 +225,32 @@ class AuthRepository {
         twoFactorEnabled: false,
       },
     });
+  }
+
+  async getUserPermissions(userId: string) {
+    const userRoles = await roleRepo.findUserRole(userId);
+    const roleIds = userRoles.map((role) => role.role.id);
+
+    if (roleIds.length === 0) {
+      return [];
+    }
+
+    const permissions = await prisma.rolePermission.findMany({
+      where: {
+        roleId: {
+          in: roleIds,
+        },
+      },
+      select: {
+        permission: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    return permissions.map((entry) => entry.permission.name);
   }
 }
 
