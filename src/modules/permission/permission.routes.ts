@@ -2,14 +2,33 @@ import { Router } from "express";
 import { requireAuth } from "../../middlewares/requireAuth.js";
 import { requirePermission } from "../../middlewares/requirePermission.js";
 import { requireRole } from "../../middlewares/requireRole.js";
+import { permissionHandler } from "./permission.controller.js";
 
 const permissionRoute = Router();
 
-// permissionRoute.use(requireRole("ADMIN"));
+permissionRoute.use(requireAuth, requireRole("ADMIN"));
 
-// permissionRoute.get("/", requireAuth, requirePermission("permission:manage"), listPermissionsHandler);
-// permissionRoute.post("/", requireAuth, requirePermission("permission:manage"), createPermissionHandler);
-// permissionRoute.post("/roles/:roleId/:permissionId", requireAuth, attachPermissionHandler);
-// permissionRoute.delete("/roles/:roleId/:permissionId", requireAuth, detachPermissionHandler);
+permissionRoute.get(
+  "/",
+  requirePermission("permission:manage"),
+  permissionHandler.listPermissionsHandler,
+);
+permissionRoute.post(
+  "/",
+  requirePermission("permission:manage"),
+  permissionHandler.createPermissionHandler,
+);
+
+permissionRoute.post(
+  "/roles/:roleId/:permissionId",
+  //   requirePermission("permission:manage"),
+  permissionHandler.attachPermissionHandler,
+);
+
+permissionRoute.delete(
+  "/roles/:roleId/:permissionId",
+  //   requirePermission("permission:manage"),
+  permissionHandler.detachPermissionHandler,
+);
 
 export default permissionRoute;
