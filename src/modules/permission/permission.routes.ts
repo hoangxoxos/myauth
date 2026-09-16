@@ -21,13 +21,13 @@ permissionRoute.post(
 
 permissionRoute.post(
   "/roles/:roleId/:permissionId",
-  //   requirePermission("permission:manage"),
+  requirePermission("permission:manage"),
   permissionHandler.attachPermissionHandler,
 );
 
 permissionRoute.delete(
   "/roles/:roleId/:permissionId",
-  //   requirePermission("permission:manage"),
+  requirePermission("permission:manage"),
   permissionHandler.detachPermissionHandler,
 );
 
