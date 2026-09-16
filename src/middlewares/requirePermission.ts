@@ -9,7 +9,7 @@ export function requirePermission(permission: string) {
       return next(new AppError(401, "You are not authenticated user"));
     }
 
-    if (!authUser.permissions) {
+    if (!authUser.permissions || authUser.permissions.length === 0) {
       return next(new AppError(401, "User does not have any permissions yet"));
     }
 
