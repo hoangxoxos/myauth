@@ -1,7 +1,14 @@
-import { RefreshToken, User } from "../../../generated/prisma/client.js";
+import {
+  Prisma,
+  RefreshToken,
+  User,
+} from "../../../generated/prisma/client.js";
 
+export type UserWithRole = User & {
+  roles: string[];
+};
 export class UserMapper {
-  static toPublicUserDto(user: User) {
+  static toPublicUserDto(user: UserWithRole) {
     return {
       id: user.id,
       email: user.email,
@@ -10,6 +17,7 @@ export class UserMapper {
       verified: user.isEmailVerified,
       createdAt: user.createdAt,
       twoFactorEnabled: user.twoFactorEnabled,
+      roles: user.roles,
     };
   }
 

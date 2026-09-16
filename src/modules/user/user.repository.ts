@@ -12,14 +12,31 @@ export class UserRepository {
   ) {
     const { skip = 0, take = 20 } = params;
 
-    const [users, total] = await Promise.all([
+    const [rawUsers, total] = await Promise.all([
       this.getClient(tx).user.findMany({
+        include: {
+          userRoles: {
+            include: {
+              role: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+
         orderBy: { createdAt: "asc" },
         skip,
         take,
       }),
       this.getClient(tx).user.count(),
     ]);
+
+    const users = rawUsers.map(({ userRoles, ...user }) => ({
+      ...user,
+      roles: userRoles.map((ur) => ur.role.name),
+    }));
 
     return { users, total };
   }
