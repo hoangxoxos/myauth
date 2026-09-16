@@ -55,6 +55,13 @@ class AuthRepository {
     });
   }
 
+  async deleteRefreshTokenByUserId(
+    userId: string,
+    tx?: Prisma.TransactionClient,
+  ) {
+    return this.getClient(tx).refreshToken.deleteMany({ where: { userId } });
+  }
+
   // email verification
   async createEmailVerificationToken(
     data: {
@@ -140,6 +147,13 @@ class AuthRepository {
     });
   }
 
+  async findOAuthAccountByUserId(
+    userId: string,
+    tx?: Prisma.TransactionClient,
+  ) {
+    return this.getClient(tx).oAuthAccount.findFirst({ where: { userId } });
+  }
+
   async createOAuthAccount(
     data: {
       provider: string;
@@ -151,6 +165,10 @@ class AuthRepository {
     return this.getClient(tx).oAuthAccount.create({
       data,
     });
+  }
+
+  async deleteOAuthAccount(id: string, tx?: Prisma.TransactionClient) {
+    return this.getClient(tx).oAuthAccount.delete({ where: { id } });
   }
 
   async setup2FA(
