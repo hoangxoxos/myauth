@@ -10,6 +10,7 @@ export const updateProfileSchema = z.object({
 
 export const updateUserEmailSchema = z.object({
   newEmail: z.email(),
+  password: z.string().optional(),
   twoFactorCode: z.string().optional(),
 });
 

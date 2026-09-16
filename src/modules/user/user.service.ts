@@ -64,11 +64,27 @@ class UserService {
       throw new AppError(404, "User not found");
     }
 
+    if (existingUser.password) {
+      if (!updatedInput.password) {
+        throw new AppError(400, "Current password is required");
+      }
+      const okPassword = await checkPassword(
+        updatedInput.password,
+        existingUser.password,
+      );
+      if (!okPassword) {
+        throw new AppError(400, "Invalid password");
+      }
+    }
+
     const newEmailNormalized = updatedInput.newEmail.toLowerCase().trim();
 
     const existingEmail = await userRepo.findByEmail(newEmailNormalized);
-    if (existingEmail) {
+    if (existingEmail && existingEmail.id !== existingUser.id) {
       throw new AppError(409, "User with email already exists.");
+    }
+    if (newEmailNormalized === existingUser.email) {
+      throw new AppError(400, "New email must be different from current email");
     }
 
     if (existingUser.twoFactorEnabled) {
