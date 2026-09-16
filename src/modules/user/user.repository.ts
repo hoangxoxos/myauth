@@ -61,6 +61,13 @@ export class UserRepository {
       },
     });
   }
+
+  async unmarkEmailVerified(id: string, tx?: Prisma.TransactionClient) {
+    return this.getClient(tx).user.update({
+      where: { id },
+      data: { isEmailVerified: false },
+    });
+  }
 }
 
 export const userRepo = new UserRepository();
