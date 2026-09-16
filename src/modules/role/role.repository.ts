@@ -6,6 +6,14 @@ class RoleRepository {
     return tx ?? prisma;
   }
 
+  async findById(id: string, tx?: Prisma.TransactionClient) {
+    return this.getClient(tx).role.findUnique({ where: { id } });
+  }
+
+  async findAll(tx?: Prisma.TransactionClient) {
+    return this.getClient(tx).role.findMany({ orderBy: { name: "asc" } });
+  }
+
   async findUserRole(userId: string, tx?: Prisma.TransactionClient) {
     return this.getClient(tx).userRole.findMany({
       where: { userId },
