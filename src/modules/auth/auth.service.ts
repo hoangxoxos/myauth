@@ -321,8 +321,8 @@ class AuthService {
     const userRolesName = userRoles.map((r) => {
       return r.role.name;
     });
-
-    const userPermissions = undefined;
+    const userPermissions = await authRepository.getUserPermissions(user.id);
+    console.log(userPermissions);
 
     // Access and refresh token
     const accessToken = signAccessToken({
@@ -513,7 +513,7 @@ class AuthService {
     const userRolesName = userRoles.map((r) => {
       return r.role.name;
     });
-    const userPermissions = undefined;
+    const userPermissions = await authRepository.getUserPermissions(user.id);
 
     const accessToken = await signAccessToken({
       sub: user.id,
@@ -864,12 +864,13 @@ class AuthService {
     // identical normal login - issue token
     const userRoles = await roleRepo.findUserRole(user.id);
     const userRolesName = userRoles.map((r) => r.role.name);
+    const userPermissions = await authRepository.getUserPermissions(user.id);
 
     const accessToken = await signAccessToken({
       sub: user.id,
       email: user.email,
       roles: userRolesName,
-      permissions: undefined,
+      permissions: userPermissions,
     });
 
     const rawRefreshToken = generateRandomToken();
