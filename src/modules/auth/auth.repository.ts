@@ -62,6 +62,30 @@ class AuthRepository {
     return this.getClient(tx).refreshToken.deleteMany({ where: { userId } });
   }
 
+  async findRefreshTokenByUserId(
+    userId: string,
+    params: { skip?: number; take?: number },
+    tx?: Prisma.TransactionClient,
+  ) {
+    const { skip = 0, take = 20 } = params;
+
+    const [refreshTokens, total] = await Promise.all([
+      this.getClient(tx).refreshToken.findMany({
+        where: { userId },
+        orderBy: { createdAt: "asc" },
+        skip,
+        take,
+      }),
+      this.getClient(tx).refreshToken.count({ where: { userId } }),
+    ]);
+
+    return { refreshTokens, total };
+  }
+
+  async findRefreshTokenById(id: string, tx?: Prisma.TransactionClient) {
+    return this.getClient(tx).refreshToken.findUnique({ where: { id } });
+  }
+
   // email verification
   async createEmailVerificationToken(
     data: {

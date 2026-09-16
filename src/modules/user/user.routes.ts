@@ -39,12 +39,13 @@ userRoute.delete(
   userHandler.deleteSessionHandler,
 );
 
-// userRoute.get(
-//   "/",
-//   requireAuth,
-//   requireRole("ADMIN"),
-//   requirePermission("user:read"), listUsersHandler
-// );
+userRoute.get(
+  "/",
+  requireAuth,
+  requireRole("ADMIN"),
+  // requirePermission("user:read"),
+  userHandler.listUsersHandler,
+);
 // userRoute.get(
 //   "/:id",
 //   requireAuth,

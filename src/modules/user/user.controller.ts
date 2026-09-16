@@ -189,6 +189,28 @@ class UserController {
       next(error);
     }
   }
+
+  async listUsersHandler(req: Request, res: Response, next: NextFunction) {
+    try {
+      const page = req.query.page ? Number(req.query.page) : 1;
+      const pageSize = req.query.pageSize ? Number(req.query.pageSize) : 20;
+
+      if (Number.isNaN(page) || Number.isNaN(pageSize)) {
+        return res.status(400).json({
+          success: false,
+          message: "page and pageSize must be numbers",
+        });
+      }
+      const result = await userService.listUsers(page, pageSize);
+
+      res.status(200).json({
+        success: true,
+        result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const userHandler = new UserController();

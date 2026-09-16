@@ -5,6 +5,7 @@ import { checkPassword } from "../../common/utils/hash.js";
 import { generateRandomToken, hashToken } from "../../common/utils/token.js";
 import { prisma } from "../../config/prisma.js";
 import { authRepository } from "../auth/auth.repository.js";
+import { UserMapper } from "./user.mapper.js";
 import { userRepo } from "./user.repository.js";
 import { UpdateProfileInput, UpdateUserEmailInput } from "./user.schema.js";
 
@@ -233,27 +234,32 @@ class UserService {
     return deletedUser;
   }
 
-  async listAllSessions(userId: string) {
+  async listAllSessions(userId: string, page = 1, pageSize = 20) {
+    const safePage = Math.max(1, page);
+    const safePageSize = Math.min(Math.max(1, pageSize), 100);
+
     const user = await userRepo.findById(userId);
 
     if (!user) {
       throw new AppError(404, "User not found");
     }
 
-    const refreshTokens = await authRepository.findRefreshTokenByUserId(userId);
-
-    const publicRefreshTokens = refreshTokens.map((r) => ({
-      id: r.id,
-      userAgent: r.userAgent,
-      ipAddress: r.ipAddress,
-      createdAt: r.createdAt,
-      expiresAt: r.expiresAt,
-      isRevoked: r.isRevoked,
-    }));
+    // const refreshTokens = await authRepository.findRefreshTokenByUserId(userId);
+    const { refreshTokens, total } =
+      await authRepository.findRefreshTokenByUserId(userId, {
+        skip: (safePage - 1) * safePageSize,
+        take: safePageSize,
+      });
 
     return {
       userId,
-      sessions: publicRefreshTokens,
+      sessions: refreshTokens.map(UserMapper.toPublicSessionDto),
+      pagination: {
+        page: safePage,
+        pageSize: safePageSize,
+        total,
+        totalPages: Math.ceil(total / safePageSize),
+      },
     };
   }
 
@@ -274,6 +280,26 @@ class UserService {
     // });
 
     return refreshToken;
+  }
+
+  async listUsers(page = 1, pageSize = 20) {
+    const safePage = Math.max(1, page);
+    const safePageSize = Math.min(Math.max(1, pageSize), 100);
+
+    const { users, total } = await userRepo.findAll({
+      skip: (safePage - 1) * safePageSize,
+      take: safePageSize,
+    });
+
+    return {
+      users: users.map(UserMapper.toPublicUserDto),
+      pagination: {
+        page: safePage,
+        pageSize: safePageSize,
+        total,
+        totalPages: Math.ceil(total / safePageSize),
+      },
+    };
   }
 }
 

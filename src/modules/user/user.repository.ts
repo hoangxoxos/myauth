@@ -5,6 +5,25 @@ export class UserRepository {
   private getClient(tx?: Prisma.TransactionClient): DbClient {
     return tx ?? prisma;
   }
+
+  async findAll(
+    params: { skip?: number; take?: number },
+    tx?: Prisma.TransactionClient,
+  ) {
+    const { skip = 0, take = 20 } = params;
+
+    const [users, total] = await Promise.all([
+      this.getClient(tx).user.findMany({
+        orderBy: { createdAt: "asc" },
+        skip,
+        take,
+      }),
+      this.getClient(tx).user.count(),
+    ]);
+
+    return { users, total };
+  }
+
   async findById(id: string, tx?: Prisma.TransactionClient) {
     return this.getClient(tx).user.findUnique({ where: { id } });
   }
