@@ -143,6 +143,52 @@ class UserController {
       next(error);
     }
   }
+
+  async listAllSessionsHandler(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    const authUser = req.user;
+
+    if (!authUser) {
+      return res.status(401).json({
+        message: "Not an authenticated user",
+      });
+    }
+
+    try {
+      const result = await userService.listAllSessions(authUser.sub);
+
+      res.status(200).json({
+        success: true,
+        message: "User all sessions",
+        result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteSessionHandler(req: Request, res: Response, next: NextFunction) {
+    const authUser = req.user;
+
+    if (!authUser) {
+      return res.status(401).json({
+        message: "Not an authenticated user",
+      });
+    }
+
+    try {
+      const sessionId = req.params.sessionId as string;
+
+      const result = await userService.deleteSession(authUser.sub, sessionId);
+
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const userHandler = new UserController();

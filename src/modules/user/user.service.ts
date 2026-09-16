@@ -232,6 +232,49 @@ class UserService {
 
     return deletedUser;
   }
+
+  async listAllSessions(userId: string) {
+    const user = await userRepo.findById(userId);
+
+    if (!user) {
+      throw new AppError(404, "User not found");
+    }
+
+    const refreshTokens = await authRepository.findRefreshTokenByUserId(userId);
+
+    const publicRefreshTokens = refreshTokens.map((r) => ({
+      id: r.id,
+      userAgent: r.userAgent,
+      ipAddress: r.ipAddress,
+      createdAt: r.createdAt,
+      expiresAt: r.expiresAt,
+      isRevoked: r.isRevoked,
+    }));
+
+    return {
+      userId,
+      sessions: publicRefreshTokens,
+    };
+  }
+
+  async deleteSession(userId: string, sessionId: string) {
+    const user = await userRepo.findById(userId);
+    if (!user) {
+      throw new AppError(404, "User not found");
+    }
+
+    const refreshToken = await authRepository.findRefreshTokenById(sessionId);
+    if (!refreshToken || refreshToken.userId !== userId) {
+      throw new AppError(404, "No sessions found");
+    }
+
+    await authRepository.revokeRefreshToken(refreshToken.id);
+    // await prisma.$transaction(async (trx) => {
+    //   await authRepository.revokeRefreshToken(refreshToken.id);
+    // });
+
+    return refreshToken;
+  }
 }
 
 export const userService = new UserService();
