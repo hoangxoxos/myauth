@@ -17,6 +17,6 @@ router.get("/", (req: Request, res: Response) => {
 router.use("/auth", authRoute);
 router.use("/users", userRoute);
 router.use("/roles", roleRoute);
-router.use("/permission", permissionRoute);
+router.use("/permissions", permissionRoute);
 
 export default router;
