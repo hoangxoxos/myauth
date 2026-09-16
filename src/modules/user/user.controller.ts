@@ -9,6 +9,7 @@ import {
   updateProfileSchema,
   UpdateUserEmailInput,
 } from "./user.schema.js";
+import { env } from "../../config/env.js";
 
 class UserController {
   async getMe(req: Request, res: Response, next: NextFunction) {
@@ -77,10 +78,11 @@ class UserController {
     }
 
     try {
-      const { newEmail, twoFactorCode } = req.body;
+      const { newEmail, password, twoFactorCode } = req.body;
 
       const result = await userService.updateUserEmail(authUser.sub, {
         newEmail,
+        password,
         twoFactorCode,
       });
 
@@ -125,6 +127,13 @@ class UserController {
         password,
         twoFactorCode,
       );
+
+      const isProd = env.NODE_ENV === "production";
+      res.clearCookie("refreshToken", {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: "lax",
+      });
 
       res.status(200).json({
         success: true,
