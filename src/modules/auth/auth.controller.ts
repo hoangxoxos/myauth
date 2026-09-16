@@ -461,13 +461,10 @@ class AuthController {
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
-      // Send the user back to the frontend, logged in.
-      // Access token goes in the URL here only as one option — you may prefer
-      // a short-lived one-time code exchanged by the frontend instead, to
-      // avoid access tokens showing up in browser history/server logs.
-      const redirectUrl = new URL("/oauth/success", env.FRONTEND_URL);
-      redirectUrl.searchParams.set("accessToken", result.accessToken);
-      res.redirect(redirectUrl.toString());
+      res.status(200).json({
+        message: "Login with Google successfully.",
+        result,
+      });
     } catch (error) {
       next(error);
     }
