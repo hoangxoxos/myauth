@@ -158,7 +158,21 @@ class UserController {
     }
 
     try {
-      const result = await userService.listAllSessions(authUser.sub);
+      const page = req.query.page ? Number(req.query.page) : 1;
+      const pageSize = req.query.pageSize ? Number(req.query.pageSize) : 20;
+
+      if (Number.isNaN(page) || Number.isNaN(pageSize)) {
+        return res.status(400).json({
+          success: false,
+          message: "page and pageSize must be numbers",
+        });
+      }
+
+      const result = await userService.listAllSessions(
+        authUser.sub,
+        page,
+        pageSize,
+      );
 
       res.status(200).json({
         success: true,
