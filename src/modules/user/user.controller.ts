@@ -4,6 +4,7 @@ import { userRepo } from "./user.repository.js";
 import { userService } from "./user.service.js";
 import { ValidatedRequest } from "../../common/types/request.js";
 import {
+  DeleteUserInput,
   UpdateProfileInput,
   updateProfileSchema,
   UpdateUserEmailInput,
@@ -97,6 +98,37 @@ class UserController {
           updatedAt: result.updatedUser.updatedAt,
         },
         emailVerificationExpiresAt: result.emailVerification.expiresAt,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteUserHandler(
+    req: ValidatedRequest<DeleteUserInput>,
+    res: Response,
+    next: NextFunction,
+  ) {
+    const authUser = req.user;
+
+    if (!authUser) {
+      return res.status(401).json({
+        message: "Not an authenticated user",
+      });
+    }
+
+    try {
+      const { password, twoFactorCode } = req.body;
+
+      const result = await userService.deleteUser(
+        authUser.sub,
+        password,
+        twoFactorCode,
+      );
+
+      res.status(200).json({
+        success: true,
+        message: "User deleted",
       });
     } catch (error) {
       next(error);

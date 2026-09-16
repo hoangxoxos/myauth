@@ -4,7 +4,11 @@ import { validateBody } from "../../middlewares/validate.js";
 import { requireRole } from "../../middlewares/requireRole.js";
 import { requirePermission } from "../../middlewares/requirePermission.js";
 import { userHandler } from "./user.controller.js";
-import { updateProfileSchema, updateUserEmailSchema } from "./user.schema.js";
+import {
+  deleteUserSchema,
+  updateProfileSchema,
+  updateUserEmailSchema,
+} from "./user.schema.js";
 
 const userRoute = Router();
 
@@ -21,9 +25,14 @@ userRoute.put(
   validateBody(updateUserEmailSchema),
   userHandler.updateUserEmailHandler,
 );
-// userRoute.delete("/me", requireAuth);
-// userRoute.get("/me/sessions", requireAuth); //list refresh token
-// userRoute.delete("/me/sessions/:sessionId", requireAuth);
+userRoute.delete(
+  "/me",
+  requireAuth,
+  validateBody(deleteUserSchema),
+  userHandler.deleteUserHandler,
+);
+userRoute.get("/me/sessions", requireAuth); //list refresh token
+userRoute.delete("/me/sessions/:sessionId", requireAuth);
 
 // userRoute.get(
 //   "/",

@@ -13,5 +13,11 @@ export const updateUserEmailSchema = z.object({
   twoFactorCode: z.string().optional(),
 });
 
+export const deleteUserSchema = z.object({
+  password: z.string().optional(),
+  twoFactorCode: z.string().optional(),
+});
+
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 export type UpdateUserEmailInput = z.infer<typeof updateUserEmailSchema>;
+export type DeleteUserInput = z.infer<typeof deleteUserSchema>;
