@@ -44,6 +44,16 @@ class AuthRepository {
     });
   }
 
+  async revokeRefreshTokenIfActive(
+    id: string,
+    tx?: Prisma.TransactionClient,
+  ) {
+    return this.getClient(tx).refreshToken.updateMany({
+      where: { id, isRevoked: false },
+      data: { isRevoked: true },
+    });
+  }
+
   async revokeAllRefreshTokenForUser(
     userId: string,
     tx?: Prisma.TransactionClient,
@@ -158,6 +168,29 @@ class AuthRepository {
     return this.getClient(tx).passwordResetToken.update({
       where: { id },
       data: { used: true },
+    });
+  }
+
+  async consumePasswordResetToken(
+    id: string,
+    tx?: Prisma.TransactionClient,
+  ) {
+    return this.getClient(tx).passwordResetToken.updateMany({
+      where: {
+        id,
+        used: false,
+        expiresAt: { gt: new Date() },
+      },
+      data: { used: true },
+    });
+  }
+
+  async deletePasswordResetTokensByUserId(
+    userId: string,
+    tx?: Prisma.TransactionClient,
+  ) {
+    return this.getClient(tx).passwordResetToken.deleteMany({
+      where: { userId },
     });
   }
 
