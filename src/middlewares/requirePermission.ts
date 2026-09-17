@@ -1,23 +1,26 @@
 import { NextFunction, Request, Response } from "express";
 import { AppError } from "../common/errors/AppError.js";
+import { authRepository } from "../modules/auth/auth.repository.js";
 
 export function requirePermission(permission: string) {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     const authUser = req.user;
 
     if (!authUser) {
       return next(new AppError(401, "You are not authenticated user"));
     }
 
-    if (!authUser.permissions || authUser.permissions.length === 0) {
-      return next(new AppError(401, "User does not have any permissions yet"));
-    }
+    try {
+      const permissions = await authRepository.getUserPermissions(authUser.sub);
 
-    if (!authUser.permissions.includes(permission)) {
-      return next(new AppError(403, "Forbidden"));
-    }
+      if (!permissions.includes(permission)) {
+        return next(new AppError(403, "Forbidden"));
+      }
 
-    next();
+      next();
+    } catch (error) {
+      next(error);
+    }
   };
 }
 
