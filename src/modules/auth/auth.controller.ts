@@ -256,7 +256,7 @@ class AuthController {
     }
 
     try {
-      const result = await authService.logout(refreshToken);
+      await authService.logout(refreshToken, authUser.sub);
 
       const isProd = env.NODE_ENV === "production";
       res.clearCookie("refreshToken", {
@@ -323,6 +323,34 @@ class AuthController {
     } catch (error) {
       next(error);
     }
+  }
+
+  async resetPasswordPage(req: Request, res: Response, next: NextFunction) {
+    const token = req.query.token;
+
+    if (typeof token !== "string" || !token) {
+      return res.status(400).send("Reset password token is missing");
+    }
+
+    const escapedToken = token.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+
+    res.type("html").send(`
+      <!doctype html>
+      <html lang="en">
+        <head><meta charset="utf-8"><title>Reset password</title></head>
+        <body>
+          <h1>Reset password</h1>
+          <form method="post" action="/auth/password/reset">
+            <input type="hidden" name="token" value="${escapedToken}">
+            <label>
+              New password
+              <input type="password" name="newPassword" minlength="6" required>
+            </label>
+            <button type="submit">Reset password</button>
+          </form>
+        </body>
+      </html>
+    `);
   }
 
   async resetPassword(
