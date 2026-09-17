@@ -1,50 +1,50 @@
 # MyAuth
 
-MyAuth là backend authentication và authorization viết bằng TypeScript, Express 5 và Prisma 7. Project hỗ trợ:
+MyAuth is a backend authentication and authorization service built with TypeScript, Express 5, and Prisma 7. It supports:
 
-- Đăng ký, đăng nhập và refresh token
-- Xác thực email
-- Đổi mật khẩu và khôi phục mật khẩu
-- OAuth với Google
-- Xác thực hai lớp TOTP/2FA
-- Quản lý phiên đăng nhập
-- Phân quyền theo role và permission
-- Gán permission cho role thông qua bảng `role_permissions`
+- User registration, login, and refresh tokens
+- Email verification
+- Password change and password recovery
+- Google OAuth
+- TOTP / two-factor authentication
+- Login session management
+- Role-based and permission-based authorization
+- Assigning permissions to roles through the `role_permissions` table
 
-## Yêu cầu
+## Requirements
 
-Cần cài đặt:
+Install the following before starting:
 
-- Node.js 20 trở lên
+- Node.js 20 or later
 - npm
-- PostgreSQL hoặc Neon PostgreSQL
-- REST Client extension trong VS Code nếu muốn chạy file `test.http`
+- PostgreSQL or Neon PostgreSQL
+- The REST Client extension for VS Code if you want to run `test.http`
 
-Kiểm tra phiên bản:
+Check your installed versions:
 
 ```bash
 node --version
 npm --version
 ```
 
-## Cài đặt
+## Installation
 
-Clone repository và đi vào thư mục project:
+Clone the repository and enter the project directory:
 
 ```bash
 git clone <repository-url>
 cd myauth
 ```
 
-Cài dependencies:
+Install dependencies:
 
 ```bash
 npm install
 ```
 
-## Cấu hình biến môi trường
+## Environment Configuration
 
-Tạo file `.env` ở thư mục gốc của project:
+Create a `.env` file in the project root:
 
 ```env
 DATABASE_URL="postgresql://postgres:password@localhost:5432/myauth?schema=public"
@@ -70,47 +70,47 @@ GOOGLE_REDIRECT_URI="http://localhost:3000/auth/google/callback"
 FRONTEND_URL="http://localhost:3000"
 ```
 
-`DATABASE_URL`, JWT, refresh token, SMTP và Google OAuth là các biến bắt buộc theo cấu hình hiện tại. Nếu chỉ thử các API không gửi email hoặc không dùng Google OAuth, vẫn cần khai báo chúng để ứng dụng khởi động thành công.
+`DATABASE_URL`, JWT secrets, refresh-token configuration, SMTP settings, and Google OAuth settings are required by the current environment validation. Even if you are not testing email or Google OAuth, these variables must be defined for the application to start.
 
-Không commit file `.env` hoặc đưa secret thật lên Git.
+Do not commit `.env` or real secrets to Git.
 
-## Database và Prisma
+## Database and Prisma
 
-Kiểm tra schema Prisma:
+Validate the Prisma schema:
 
 ```bash
 npx prisma validate
 ```
 
-### Database mới hoặc môi trường development
+### New database or development environment
 
-Tạo và chạy migration:
+Create and apply a migration:
 
 ```bash
 npx prisma migrate dev --name init
 ```
 
-Nếu project đã có migration và database cần được cập nhật:
+If the project already contains migrations and the database needs to be updated:
 
 ```bash
 npx prisma migrate dev
 ```
 
-Generate Prisma Client:
+Generate the Prisma Client:
 
 ```bash
 npx prisma generate
 ```
 
-Chạy seed để tạo role, permission và user demo:
+Seed the database with roles, permissions, and demo users:
 
 ```bash
 npx prisma db seed
 ```
 
-Seed hiện tạo:
+The seed creates the following demo data:
 
-| Loại           | Giá trị             |
+| Type           | Value               |
 | -------------- | ------------------- |
 | Admin email    | `admin@example.com` |
 | Admin password | `Admin@123`         |
@@ -119,43 +119,43 @@ Seed hiện tạo:
 | Admin role     | `ADMIN`             |
 | User role      | `USER`              |
 
-Đây là thông tin demo cho môi trường local. Hãy đổi hoặc xóa các tài khoản này trước khi deploy production.
+These credentials are for local development only. Change or remove them before deploying to production.
 
-### Môi trường đã có migration
+### Existing database with committed migrations
 
-Dùng lệnh sau để chỉ áp dụng migration đã commit:
+Apply only committed migrations:
 
 ```bash
 npx prisma migrate deploy
 ```
 
-Không chạy `migrate reset` trên database có dữ liệu quan trọng vì lệnh này sẽ xóa dữ liệu và tạo lại schema.
+Do not run `prisma migrate reset` against a database containing important data. It deletes the data and recreates the schema.
 
-## Chạy project
+## Running the Project
 
-Chạy server ở development mode:
+Start the development server:
 
 ```bash
 npm run dev
 ```
 
-Server mặc định chạy tại:
+The server runs at:
 
 ```text
 http://localhost:3000
 ```
 
-Kiểm tra server:
+Check that the server is running:
 
 ```http
 GET http://localhost:3000/
 ```
 
-## Test API bằng VS Code
+## Testing the API with VS Code
 
-Mở file [test.http](test.http) bằng VS Code và cài extension REST Client nếu chưa có.
+Open [test.http](test.http) in VS Code and install the REST Client extension if necessary.
 
-Ở phần đầu file, thay các placeholder sau bằng giá trị thật:
+At the top of the file, replace the following placeholders with real values:
 
 ```text
 @accessToken = paste-access-token-here
@@ -166,25 +166,25 @@ Mở file [test.http](test.http) bằng VS Code và cài extension REST Client n
 @permissionId = paste-permission-id-here
 ```
 
-Quy trình test đề xuất:
+Recommended testing flow:
 
-1. Chạy `npm run dev`.
-2. Chạy request login user hoặc admin.
-3. Lấy `accessToken` từ response.
-4. Lấy refresh token từ cookie hoặc response tùy client.
-5. Dùng admin token để gọi các API `/roles` và `/permissions`.
-6. Gọi attach permission:
+1. Run `npm run dev`.
+2. Run the user or admin login request.
+3. Copy the `accessToken` from the response.
+4. Copy the refresh token from the cookie or response, depending on your client.
+5. Use the admin token to call the `/roles` and `/permissions` endpoints.
+6. Attach a permission to a role:
 
 ```http
 POST http://localhost:3000/permissions/roles/{roleId}/{permissionId}
 Authorization: Bearer {admin-access-token}
 ```
 
-7. Gọi `GET /permissions` để kiểm tra permission đã được gắn vào role.
+7. Call `GET /permissions` to verify that the permission is attached to the role.
 
-Các endpoint quản trị yêu cầu user có role `ADMIN` và permission tương ứng.
+Administrative endpoints require the user to have the `ADMIN` role and the required permission.
 
-## Các module API
+## API Modules
 
 ### Auth
 
@@ -229,7 +229,7 @@ Base path: `/roles`
 
 - `GET /roles`
 
-Các API tạo, sửa, xóa role hiện chưa được triển khai.
+Role create, update, and delete endpoints have not been implemented yet.
 
 ### Permission
 
@@ -240,46 +240,46 @@ Base path: `/permissions`
 - `POST /permissions/roles/:roleId/:permissionId`
 - `DELETE /permissions/roles/:roleId/:permissionId`
 
-## Cấu trúc thư mục chính
+## Main Project Structure
 
 ```text
 prisma/
   schema.prisma       # Prisma schema
   migrations/         # Database migrations
-  seed.ts             # Dữ liệu mẫu
+  seed.ts             # Demo data
 src/
-  app.ts              # Express app và middleware
+  app.ts              # Express app and middleware
   server.ts           # HTTP server
-  index.routes.ts     # Đăng ký các module route
-  config/             # Environment và Prisma client
-  middlewares/        # Auth, role, permission, validation
+  index.routes.ts     # Module route registration
+  config/             # Environment and Prisma client
+  middlewares/        # Authentication, role, permission, and validation middleware
   modules/
     auth/             # Authentication
-    user/             # User và session
-    role/             # Role
-    permission/       # Permission và role-permission
+    user/             # Users and sessions
+    role/             # Roles
+    permission/       # Permissions and role-permission relations
 ```
 
-## Kiểm tra trước khi commit
+## Checks Before Committing
 
-Chạy các lệnh sau:
+Run these commands before committing changes:
 
 ```bash
 npx tsc --noEmit
 npx prisma validate
 ```
 
-Nếu sửa schema Prisma, chạy thêm:
+If you modify the Prisma schema, also run:
 
 ```bash
 npx prisma generate
 ```
 
-## Một số lưu ý bảo mật
+## Security Notes
 
-- Dùng secret ngẫu nhiên, dài cho `JWT_ACCESS_SECRET` và `REFRESH_SECRET`.
-- Không dùng tài khoản seed trong production.
-- Cấu hình SMTP thật nếu cần email verification hoặc password reset.
-- Cấu hình `FRONTEND_URL` đúng với frontend thực tế.
-- Với production nhiều instance, thay rate limiter trong memory bằng Redis hoặc một store dùng chung.
-- Không commit `.env`, password, token hoặc private key.
+- Use long, randomly generated values for `JWT_ACCESS_SECRET` and `REFRESH_SECRET`.
+- Do not use the seeded accounts in production.
+- Configure a real SMTP provider for email verification and password recovery.
+- Set `FRONTEND_URL` to the actual frontend origin.
+- When running multiple production instances, replace the in-memory rate limiter with Redis or another shared store.
+- Never commit `.env`, passwords, tokens, or private keys.
