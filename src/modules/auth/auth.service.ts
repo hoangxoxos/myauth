@@ -1,4 +1,5 @@
 import { AppError } from "../../common/errors/AppError.js";
+import { escapeHtml } from "../../common/utils/html.js";
 import { getServerUrl } from "../../common/utils/app-url.js";
 import { sendEmail } from "../../common/utils/email.js";
 import { checkPassword, hashPassword } from "../../common/utils/hash.js";
@@ -90,7 +91,7 @@ class AuthService {
       `
         <h2>Verify your email</h2>
 
-        <p>Hello ${user.name ?? "there"},</p>
+        <p>Hello ${escapeHtml(user.name ?? "there")},</p>
 
         <p>
           Thank you for registering.
@@ -198,7 +199,7 @@ class AuthService {
       `
         <h2>Verify your email</h2>
 
-        <p>Hello ${user.name ?? "there"},</p>
+        <p>Hello ${escapeHtml(user.name ?? "there")},</p>
 
         <p>
           Please click the button below to verify your email.
@@ -528,8 +529,15 @@ class AuthService {
       Date.now() + 7 * 24 * 60 * 60 * 1000,
     );
     const newRefreshToken = await prisma.$transaction(async (trx) => {
-      // revoked old token
-      await authRepository.revokeRefreshToken(refreshToken.id, trx);
+      const revoked = await authRepository.revokeRefreshTokenIfActive(
+        refreshToken.id,
+        trx,
+      );
+
+      if (revoked.count === 0) {
+        return null;
+      }
+
       return authRepository.createRefreshToken(
         {
           tokenHash: newHashedRefreshToken,
@@ -541,6 +549,11 @@ class AuthService {
         trx,
       );
     });
+
+    if (!newRefreshToken) {
+      await authRepository.revokeAllRefreshTokenForUser(refreshToken.userId);
+      throw new AppError(401, "Invalid refresh token");
+    }
 
     return {
       accessToken,
@@ -560,12 +573,16 @@ class AuthService {
     };
   }
 
-  async logout(token: string) {
+  async logout(token: string, userId: string) {
     const tokenHash = hashToken(token);
     const refreshToken = await authRepository.findRefreshTokenByHash(tokenHash);
 
     if (!refreshToken) {
       throw new AppError(401, "Invalid refresh token");
+    }
+
+    if (refreshToken.userId !== userId) {
+      throw new AppError(403, "Refresh token does not belong to this user");
     }
 
     if (refreshToken.isRevoked) {
@@ -606,10 +623,16 @@ class AuthService {
     const tokenHash = hashToken(rawToken);
     const passwordResetExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-    await authRepository.createPasswordResetToken({
-      tokenHash,
-      userId: user.id,
-      expiresAt: passwordResetExpiresAt,
+    await prisma.$transaction(async (trx) => {
+      await authRepository.deletePasswordResetTokensByUserId(user.id, trx);
+      await authRepository.createPasswordResetToken(
+        {
+          tokenHash,
+          userId: user.id,
+          expiresAt: passwordResetExpiresAt,
+        },
+        trx,
+      );
     });
 
     const encodedToken = encodeURIComponent(rawToken);
@@ -621,11 +644,11 @@ class AuthService {
       `
       <h2>Reset your password</h2>
 
-      <p>Hello ${user.name ?? "there"},</p>
+      <p>Hello ${escapeHtml(user.name ?? "there")},</p>
 
       <p>This is your reset password link.</p>
 
-      <p>${resetUrl}</p>
+      <p>${escapeHtml(resetUrl)}</p>
       
         <p>
           This link expires in 24 hours.
@@ -660,9 +683,16 @@ class AuthService {
     const newPasswordHash = await hashPassword(newPassword);
 
     const result = await prisma.$transaction(async (trx) => {
-      await userRepo.update(user.id, { password: newPasswordHash }, trx);
+      const consumed = await authRepository.consumePasswordResetToken(
+        passwordReset.id,
+        trx,
+      );
 
-      await authRepository.markPasswordResetTokenUsed(passwordReset.id, trx);
+      if (consumed.count === 0) {
+        throw new AppError(400, "Invalid or expired reset password token");
+      }
+
+      await userRepo.update(user.id, { password: newPasswordHash }, trx);
 
       await authRepository.revokeAllRefreshTokenForUser(user.id, trx);
 
