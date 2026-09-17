@@ -19,6 +19,17 @@ export const deleteUserSchema = z.object({
   twoFactorCode: z.string().optional(),
 });
 
+export const adminUpdateUserProfileSchema = z.object({
+  name: z.string().optional(),
+  email: z.email().optional(),
+  password: z.string().optional(),
+  avatarUrl: z.string().optional(),
+  isEmailVerified: z.boolean().optional(),
+});
+
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 export type UpdateUserEmailInput = z.infer<typeof updateUserEmailSchema>;
 export type DeleteUserInput = z.infer<typeof deleteUserSchema>;
+export type AdminUpdateUserProfileSchema = z.infer<
+  typeof adminUpdateUserProfileSchema
+>;

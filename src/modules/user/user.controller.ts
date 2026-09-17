@@ -4,6 +4,7 @@ import { userRepo } from "./user.repository.js";
 import { userService } from "./user.service.js";
 import { ValidatedRequest } from "../../common/types/request.js";
 import {
+  AdminUpdateUserProfileSchema,
   DeleteUserInput,
   UpdateProfileInput,
   updateProfileSchema,
@@ -106,7 +107,7 @@ class UserController {
     }
   }
 
-  async deleteUserHandler(
+  async deleteHandler(
     req: ValidatedRequest<DeleteUserInput>,
     res: Response,
     next: NextFunction,
@@ -122,7 +123,7 @@ class UserController {
     try {
       const { password, twoFactorCode } = req.body;
 
-      const result = await userService.deleteUser(
+      const result = await userService.delete(
         authUser.sub,
         password,
         twoFactorCode,
@@ -221,6 +222,80 @@ class UserController {
         success: true,
         result,
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getUserHandler(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = req.params.id as string;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          message: "Please provide an user id",
+        });
+      }
+
+      const result = await userService.getUser(id);
+
+      res.status(200).json({
+        success: true,
+        message: "User info",
+        user: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateUserHandler(
+    req: ValidatedRequest<AdminUpdateUserProfileSchema>,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const id = req.params.id;
+
+      if (typeof id !== "string" || !id) {
+        return res.status(400).json({
+          success: false,
+          message: "Please provide an user id and must be a string",
+        });
+      }
+
+      const { name, email, password, avatarUrl, isEmailVerified } = req.body;
+
+      const result = await userService.updateUser(id, {
+        name,
+        email,
+        password,
+        avatarUrl,
+        isEmailVerified,
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "User updated successfully",
+        user: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteUserHandler(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = req.params.id as string;
+
+      if (!id) {
+        throw new AppError(400, "User id must be a string and cannot be empty");
+      }
+
+      const result = await userService.deleteUser(id);
+
+      res.status(204).send();
     } catch (error) {
       next(error);
     }

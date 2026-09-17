@@ -5,7 +5,7 @@ import {
 } from "../../../generated/prisma/client.js";
 
 export type UserWithRole = User & {
-  roles: string[];
+  roles?: string[];
 };
 export class UserMapper {
   static toPublicUserDto(user: UserWithRole) {

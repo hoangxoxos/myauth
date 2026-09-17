@@ -30,7 +30,7 @@ userRoute.delete(
   "/me",
   requireAuth,
   validateBody(deleteUserSchema),
-  userHandler.deleteUserHandler,
+  userHandler.deleteHandler,
 );
 userRoute.get("/me/sessions", requireAuth, userHandler.listAllSessionsHandler); //list refresh token
 userRoute.delete(
@@ -43,30 +43,36 @@ userRoute.get(
   "/",
   requireAuth,
   requireRole("ADMIN"),
-  // requirePermission("user:read"),
+  requirePermission("user:read"),
   userHandler.listUsersHandler,
 );
-// userRoute.get(
-//   "/:id",
-//   requireAuth,
-//   requireRole("ADMIN"),
-//   requirePermission("user:read"), getUserHandler
-// );
-// userRoute.put(
-//   "/:id",
-//   requireAuth,
-//   requireRole("ADMIN"),
-//   requirePermission("user:update"), updateUserHandler
-// );
-// userRoute.delete(
-//   "/:id",
-//   requireAuth,
-//   requireRole("ADMIN"),
-//   requirePermission("user:delete"), deleteUserHandler
-// );
+
+userRoute.get(
+  "/:id",
+  requireAuth,
+  requireRole("ADMIN"),
+  requirePermission("user:read"),
+  userHandler.getUserHandler,
+);
+
+userRoute.put(
+  "/:id",
+  requireAuth,
+  requireRole("ADMIN"),
+  requirePermission("user:update"),
+  userHandler.updateUserHandler,
+);
+
+userRoute.delete(
+  "/:id",
+  requireAuth,
+  requireRole("ADMIN"),
+  requirePermission("user:delete"),
+  userHandler.deleteUserHandler,
+);
 
 // ===============
-// For development: delete all session for clean response
+// For development: clean all sessions
 userRoute.delete(
   "/sessions",
   requireAuth,

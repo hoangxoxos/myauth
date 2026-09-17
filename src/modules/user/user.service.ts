@@ -1,10 +1,11 @@
 import { AppError } from "../../common/errors/AppError.js";
 import { getServerUrl } from "../../common/utils/app-url.js";
 import { sendEmail } from "../../common/utils/email.js";
-import { checkPassword } from "../../common/utils/hash.js";
+import { checkPassword, hashPassword } from "../../common/utils/hash.js";
 import { generateRandomToken, hashToken } from "../../common/utils/token.js";
 import { prisma } from "../../config/prisma.js";
 import { authRepository } from "../auth/auth.repository.js";
+import { roleRepo } from "../role/role.repository.js";
 import { UserMapper } from "./user.mapper.js";
 import { userRepo } from "./user.repository.js";
 import { UpdateProfileInput, UpdateUserEmailInput } from "./user.schema.js";
@@ -188,7 +189,7 @@ class UserService {
     };
   }
 
-  async deleteUser(userId: string, password?: string, twoFactorCode?: string) {
+  async delete(userId: string, password?: string, twoFactorCode?: string) {
     const user = await userRepo.findById(userId);
     if (!user) {
       throw new AppError(404, "User not found");
@@ -300,6 +301,93 @@ class UserService {
         totalPages: Math.ceil(total / safePageSize),
       },
     };
+  }
+
+  async getUser(id: string) {
+    const user = await userRepo.findById(id);
+
+    if (!user) {
+      throw new AppError(404, "User not found");
+    }
+    const roles = await roleRepo.findUserRole(user.id);
+    const userRoles = roles.map((r) => r.role.name);
+
+    const userWithRoles = {
+      ...user,
+      roles: userRoles,
+    };
+    return UserMapper.toPublicUserDto(userWithRoles);
+  }
+
+  async updateUser(
+    userId: string,
+    updateDto: {
+      name?: string;
+      email?: string;
+      password?: string;
+      avatarUrl?: string;
+      isEmailVerified?: boolean;
+    },
+  ) {
+    const user = await userRepo.findById(userId);
+
+    if (!user) {
+      throw new AppError(404, "User not found");
+    }
+
+    const data: {
+      name?: string;
+      email?: string;
+      password?: string;
+      avatarUrl?: string;
+    } = {};
+
+    if (updateDto.name !== undefined) {
+      data.name = updateDto.name;
+    }
+
+    if (updateDto.email !== undefined) {
+      const normalizedEmail = updateDto.email.toLowerCase().trim();
+
+      if (normalizedEmail !== user.email) {
+        const existingUser = await userRepo.findByEmail(normalizedEmail);
+
+        if (existingUser && existingUser.id !== user.id) {
+          throw new AppError(409, "Email already exists");
+        }
+
+        data.email = normalizedEmail;
+      }
+    }
+
+    if (updateDto.avatarUrl !== undefined) {
+      data.avatarUrl = updateDto.avatarUrl;
+    }
+
+    if (updateDto.password !== undefined) {
+      data.password = await hashPassword(updateDto.password);
+    }
+
+    if (updateDto.isEmailVerified !== undefined) {
+      if (updateDto.isEmailVerified) {
+        await userRepo.markEmailVerified(user.id);
+      } else {
+        await userRepo.unmarkEmailVerified(user.id);
+      }
+    }
+
+    const updatedUser = await userRepo.update(userId, data);
+
+    return UserMapper.toPublicUserDto(updatedUser);
+  }
+  async deleteUser(userId: string) {
+    const user = await userRepo.findById(userId);
+
+    if (!user) {
+      throw new AppError(404, "User not found");
+    }
+
+    await userRepo.delete(userId);
   }
 }
 
