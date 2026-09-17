@@ -1,0 +1,239 @@
+@baseUrl = http://localhost:3000
+@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyZjBjZTA2MC04MzZhLTQzZTUtOTIyMS1mYWIxYmJjZGJmNzciLCJlbWFpbCI6ImFkbWluQGV4YW1wbGUuY29tIiwicm9sZXMiOlsiQURNSU4iXSwicGVybWlzc2lvbnMiOlsicGVybWlzc2lvbjptYW5hZ2UiLCJwb3N0OmNyZWF0ZSIsInVzZXI6cmVhZCIsInVzZXI6ZGVsZXRlIiwidXNlcjp1cGRhdGUiXSwiaWF0IjoxNzg5NjM2MTA0LCJleHAiOjE3ODk2MzcwMDR9.EMxLhapH9PnbeJpBkON7OcrgW87akx1HdgUWjaepxTk
+@adminAccessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyZjBjZTA2MC04MzZhLTQzZTUtOTIyMS1mYWIxYmJjZGJmNzciLCJlbWFpbCI6ImFkbWluQGV4YW1wbGUuY29tIiwicm9sZXMiOlsiQURNSU4iXSwicGVybWlzc2lvbnMiOlsicGVybWlzc2lvbjptYW5hZ2UiLCJwb3N0OmNyZWF0ZSIsInVzZXI6cmVhZCIsInVzZXI6ZGVsZXRlIiwidXNlcjp1cGRhdGUiXSwiaWF0IjoxNzg5NjM2MTA0LCJleHAiOjE3ODk2MzcwMDR9.EMxLhapH9PnbeJpBkON7OcrgW87akx1HdgUWjaepxTk
+@refreshToken = c33cb95d66026441c2e033839cda903f8c794c1ec05059575c63bec90b845ce9
+@userId = 381b9d45-eb59-46e9-8966-5f35506f1568
+@roleId = paste-role-id-here
+@permissionId = paste-permission-id-here
+@sessionId = 9386b408-63db-4c75-8116-0205778f4ae6
+@verificationToken = paste-email-verification-token-here
+@resetToken = 515234a36e79e4b694265b16a7df99faa3c58e9e1b903a4121f307a3e94d269b
+@twoFactorCode = 123456
+
+### ================================================================
+### AUTH MODULE
+### ================================================================
+
+### Register a normal user
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+    "email": "new-user@example.com",
+    "password": "User@123",
+    "name": "New User"
+}
+
+### Login as normal user
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+    "email": "user@example.com",
+    "password": "123456"
+}
+
+### Login as admin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+    "email": "admin@example.com",
+    "password": "Admin@123"
+}
+
+### Refresh access token (REST Client may reuse the login cookie)
+POST {{baseUrl}}/auth/refresh
+Cookie: refreshToken={{refreshToken}}
+
+### Send email verification
+POST {{baseUrl}}/auth/email/send-verification
+Content-Type: application/json
+
+{
+    "email": "new-user@example.com"
+}
+
+### Verify email
+GET {{baseUrl}}/auth/email/verify?token={{verificationToken}}
+
+### Forgot password
+POST {{baseUrl}}/auth/password/forgot
+Content-Type: application/json
+
+{
+    "email": "user@example.com"
+}
+
+### Open reset-password form
+GET {{baseUrl}}/auth/password/reset?token={{resetToken}}
+
+### Reset password through the API
+POST {{baseUrl}}/auth/password/reset
+Content-Type: application/json
+
+{
+    "token": "{{resetToken}}",
+    "newPassword": "NewUser@123"
+}
+
+### Change password
+PUT {{baseUrl}}/auth/password/change
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+    "currentPassword": "123456",
+    "newPassword": "User@123"
+}
+
+### Start 2FA setup
+POST {{baseUrl}}/auth/2fa/setup
+Authorization: Bearer {{accessToken}}
+
+### Enable 2FA
+POST {{baseUrl}}/auth/2fa/enable
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+    "code": "{{twoFactorCode}}"
+}
+
+### Login with 2FA
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+    "email": "user@example.com",
+    "password": "User@123",
+    "twoFactorCode": "{{twoFactorCode}}"
+}
+
+### Disable 2FA
+POST {{baseUrl}}/auth/2fa/disable
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+    "password": "User@123",
+    "code": "{{twoFactorCode}}"
+}
+
+### Logout current session
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{accessToken}}
+Cookie: refreshToken={{refreshToken}}
+
+### Logout all sessions
+POST {{baseUrl}}/auth/logout-all
+Authorization: Bearer {{accessToken}}
+Cookie: refreshToken={{refreshToken}}
+
+### Google OAuth entry point (open in a browser)
+GET {{baseUrl}}/auth/google
+
+### ================================================================
+### USER MODULE
+### ================================================================
+
+### Get current user
+GET {{baseUrl}}/users/me
+Authorization: Bearer {{accessToken}}
+
+### Update current user profile
+PUT {{baseUrl}}/users/me
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+    "name": "Updated User",
+    "avatarUrl": "https://example.com/avatar.png"
+}
+
+### Change current user email
+PUT {{baseUrl}}/users/me/email
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+    "newEmail": "updated-user@example.com",
+    "password": "User@123"
+}
+
+### List current user sessions
+GET {{baseUrl}}/users/me/sessions?page=1&pageSize=20
+Authorization: Bearer {{accessToken}}
+
+### Delete one current user session
+DELETE {{baseUrl}}/users/me/sessions/{{sessionId}}
+Authorization: Bearer {{accessToken}}
+
+### Delete all current user sessions
+DELETE {{baseUrl}}/users/sessions
+Authorization: Bearer {{accessToken}}
+
+### Delete current user account
+DELETE {{baseUrl}}/users/me
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+    "password": "User@123"
+}
+
+### List users (admin + user:read permission)
+GET {{baseUrl}}/users/?page=1&pageSize=20
+Authorization: Bearer {{adminAccessToken}}
+
+### Get one user (admin + user:read permission)
+GET {{baseUrl}}/users/{{userId}}
+Authorization: Bearer {{adminAccessToken}}
+
+### Update one user (admin + user:update permission)
+PUT {{baseUrl}}/users/{{userId}}
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+    "name": "Admin Updated User",
+    "isEmailVerified": true
+}
+
+### Delete one user (admin + user:delete permission)
+DELETE {{baseUrl}}/users/{{userId}}
+Authorization: Bearer {{adminAccessToken}}
+
+### ================================================================
+### ROLE MODULE
+### ================================================================
+
+### List roles (admin)
+GET {{baseUrl}}/roles/
+Authorization: Bearer {{adminAccessToken}}
+
+### ================================================================
+### PERMISSION MODULE
+### ================================================================
+
+### List permissions and attached roles (admin + permission:manage)
+GET {{baseUrl}}/permissions/
+Authorization: Bearer {{adminAccessToken}}
+
+### Create permission
+POST {{baseUrl}}/permissions/
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+    "name": "report:read",
+    "description": "View reports"
+}
+
+### Attach permission to role
+POST {{baseUrl}}/permissions/roles/{{roleId}}/{{permissionId}}
+Authorization: Bearer {{adminAccessToken}}
+
+### Detach permission from role
+DELETE {{baseUrl}}/permissions/roles/{{roleId}}/{{permissionId}}
+Authorization: Bearer {{adminAccessToken}}
