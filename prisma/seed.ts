@@ -5,20 +5,6 @@
  * Creates: 2 roles (ADMIN, USER), a set of permissions, and 2 users
  * (one admin, one normal user) linked to their role via UserRole.
  *
- * NOTE: Your current schema does NOT have a join table between
- * Role and Permission (no RolePermission model). So permissions
- * are created here, but they are not linked to any role yet.
- * If you want "role has these permissions", add a model like:
- *
- *   model RolePermission {
- *     roleId       String
- *     permissionId String
- *     role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
- *     permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
- *     @@id([roleId, permissionId])
- *     @@map("role_permissions")
- *   }
- *
  * Run with: npx prisma db seed
  * (make sure "prisma.seed" is set in package.json, see note at bottom)
  */
@@ -60,6 +46,18 @@ async function upsertPermissions() {
   // Prisma 7 still supports createMany with skipDuplicates on most DBs (e.g. Postgres).
   await prisma.permission.createMany({
     data: PERMISSIONS,
+    skipDuplicates: true,
+  });
+}
+
+async function assignPermissions(roleId: string, permissionNames: string[]) {
+  const permissions = await prisma.permission.findMany({
+    where: { name: { in: permissionNames } },
+    select: { id: true },
+  });
+
+  await prisma.rolePermission.createMany({
+    data: permissions.map(({ id: permissionId }) => ({ roleId, permissionId })),
     skipDuplicates: true,
   });
 }
@@ -123,6 +121,11 @@ async function main() {
 
   console.log("Seeding permissions...");
   await upsertPermissions();
+  await assignPermissions(
+    adminRole.id,
+    PERMISSIONS.map(({ name }) => name),
+  );
+  await assignPermissions(userRole.id, ["post:read"]);
 
   console.log("Seeding admin user...");
   const admin = await upsertUserWithRole({

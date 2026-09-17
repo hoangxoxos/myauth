@@ -3,8 +3,8 @@
 @adminAccessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyZjBjZTA2MC04MzZhLTQzZTUtOTIyMS1mYWIxYmJjZGJmNzciLCJlbWFpbCI6ImFkbWluQGV4YW1wbGUuY29tIiwicm9sZXMiOlsiQURNSU4iXSwicGVybWlzc2lvbnMiOlsicGVybWlzc2lvbjptYW5hZ2UiLCJwb3N0OmNyZWF0ZSIsInVzZXI6cmVhZCIsInVzZXI6ZGVsZXRlIiwidXNlcjp1cGRhdGUiXSwiaWF0IjoxNzg5NjM2MTA0LCJleHAiOjE3ODk2MzcwMDR9.EMxLhapH9PnbeJpBkON7OcrgW87akx1HdgUWjaepxTk
 @refreshToken = c33cb95d66026441c2e033839cda903f8c794c1ec05059575c63bec90b845ce9
 @userId = 381b9d45-eb59-46e9-8966-5f35506f1568
-@roleId = paste-role-id-here
-@permissionId = paste-permission-id-here
+@roleId = 749b008d-e28a-4748-9119-156c56c6b005
+@permissionId = d20298f1-99a8-4d1f-b0f2-f5194ad6924a
 @sessionId = 9386b408-63db-4c75-8116-0205778f4ae6
 @verificationToken = paste-email-verification-token-here
 @resetToken = 515234a36e79e4b694265b16a7df99faa3c58e9e1b903a4121f307a3e94d269b
@@ -201,7 +201,7 @@ Content-Type: application/json
 }
 
 ### Delete one user (admin + user:delete permission)
-DELETE {{baseUrl}}/users/{{userId}}
+DELETE {{baseUrl}}/users/d25fd54a-931f-45b3-8e5f-ffa2641b1370
 Authorization: Bearer {{adminAccessToken}}
 
 ### ================================================================
