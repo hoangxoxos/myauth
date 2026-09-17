@@ -32,7 +32,7 @@ npm --version
 Clone the repository and enter the project directory:
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/hoangxoxos/myauth
 cd myauth
 ```
 
@@ -71,8 +71,6 @@ FRONTEND_URL="http://localhost:3000"
 ```
 
 `DATABASE_URL`, JWT secrets, refresh-token configuration, SMTP settings, and Google OAuth settings are required by the current environment validation. Even if you are not testing email or Google OAuth, these variables must be defined for the application to start.
-
-Do not commit `.env` or real secrets to Git.
 
 ## Database and Prisma
 
@@ -283,3 +281,5 @@ npx prisma generate
 - Set `FRONTEND_URL` to the actual frontend origin.
 - When running multiple production instances, replace the in-memory rate limiter with Redis or another shared store.
 - Never commit `.env`, passwords, tokens, or private keys.
+- You need to go Google Cloud Console to set up your OAuth
+- You can go to Mailtrap to setup SMTP
