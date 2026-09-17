@@ -5,6 +5,7 @@ import { requireRole } from "../../middlewares/requireRole.js";
 import { requirePermission } from "../../middlewares/requirePermission.js";
 import { userHandler } from "./user.controller.js";
 import {
+  adminUpdateUserProfileSchema,
   deleteUserSchema,
   updateProfileSchema,
   updateUserEmailSchema,
@@ -39,6 +40,20 @@ userRoute.delete(
   userHandler.deleteSessionHandler,
 );
 
+// for development: clean all sessions
+userRoute.delete(
+  "/sessions",
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const id = req.user?.sub;
+    await prisma.refreshToken.deleteMany({ where: { userId: id } });
+
+    res.status(200).json({
+      message: "Ok",
+    });
+  },
+);
+
 userRoute.get(
   "/",
   requireAuth,
@@ -60,6 +75,7 @@ userRoute.put(
   requireAuth,
   requireRole("ADMIN"),
   requirePermission("user:update"),
+  validateBody(adminUpdateUserProfileSchema),
   userHandler.updateUserHandler,
 );
 
@@ -71,18 +87,4 @@ userRoute.delete(
   userHandler.deleteUserHandler,
 );
 
-// ===============
-// For development: clean all sessions
-userRoute.delete(
-  "/sessions",
-  requireAuth,
-  async (req: Request, res: Response) => {
-    const id = req.user?.sub;
-    await prisma.refreshToken.deleteMany({ where: { userId: id } });
-
-    res.status(200).json({
-      message: "Ok",
-    });
-  },
-);
 export default userRoute;

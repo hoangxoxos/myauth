@@ -1,4 +1,5 @@
 import { AppError } from "../../common/errors/AppError.js";
+import { escapeHtml } from "../../common/utils/html.js";
 import { getServerUrl } from "../../common/utils/app-url.js";
 import { sendEmail } from "../../common/utils/email.js";
 import { checkPassword, hashPassword } from "../../common/utils/hash.js";
@@ -29,7 +30,6 @@ class UserService {
       avatar: user.avatarUrl,
       isEmailVerified: user.isEmailVerified,
       twoFactorEnabled: user.twoFactorEnabled,
-      twoFactorSecret: user.twoFactorSecret,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
@@ -155,7 +155,7 @@ class UserService {
       `
         <h2>Verify your email</h2>
 
-        <p>Hello ${updatedUser.name ?? "there"},</p>
+        <p>Hello ${escapeHtml(updatedUser.name ?? "there")},</p>
 
         <p>
           Please click the button below to verify your email.
@@ -368,15 +368,17 @@ class UserService {
       data.password = await hashPassword(updateDto.password);
     }
 
-    if (updateDto.isEmailVerified !== undefined) {
-      if (updateDto.isEmailVerified) {
-        await userRepo.markEmailVerified(user.id);
-      } else {
-        await userRepo.unmarkEmailVerified(user.id);
+    const updatedUser = await prisma.$transaction(async (trx) => {
+      if (updateDto.isEmailVerified !== undefined) {
+        if (updateDto.isEmailVerified) {
+          await userRepo.markEmailVerified(user.id, trx);
+        } else {
+          await userRepo.unmarkEmailVerified(user.id, trx);
+        }
       }
-    }
 
-    const updatedUser = await userRepo.update(userId, data);
+      return userRepo.update(userId, data, trx);
+    });
 
     return UserMapper.toPublicUserDto(updatedUser);
   }
